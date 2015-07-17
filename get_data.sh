@@ -1,0 +1,136 @@
+#!/bin/sh
+#
+# just type ./get_data.sh for usage
+#
+export LANG=en
+
+CTL=""
+VAR=""
+OUTPUT=""
+TMIN=""
+TMAX=""
+TINT=1
+YMD_MIN=""  # in YYYYMMDD
+YMD_MAX=""  # in YYYYMMDD
+VERBOSE=0
+
+if [ "$1" = "" ] ; then
+    cat <<EOF
+usage:
+ get_data.sh ctl-filename variable-name output-filename
+             -t tmin:tmax[:tint]
+             -ymd ymdmin:ymdmax[:tint]
+EOF
+#               -gdate gdatemin:gdatemax[:tint]
+    exit
+fi
+
+
+while [ "$1" != "" ] ; do
+
+    if [ "$1" = "-t" ] ; then
+	shift; TMP=$1
+	TMIN=$( echo ${TMP} | cut -d : -f 1 )
+	TMAX=$( echo ${TMP} | cut -d : -f 2 )
+	TINT=$( echo ${TMP} | cut -d : -f 3 )
+	[ "${TINT}" = "" ] && TINT=1
+
+    elif [ "$1" = "-ymd" ] ; then
+	shift; TMP=$1
+	YMD_MIN=$( echo ${TMP} | cut -d : -f 1 )
+	YMD_MAX=$( echo ${TMP} | cut -d : -f 2 )
+	TINT=$( echo ${TMP} | cut -d : -f 3 )
+	[ "${TINT}" = "" ] && TINT=1
+
+    elif [ "$1" = "-v" ] ; then
+	let VERBOSE=VERBOSE+1
+
+    elif [ "${CTL}" = "" ] ; then
+	CTL=$1
+
+    elif [ "${VAR}" = "" ] ; then
+	VAR=$1
+
+    elif [ "${OUTPUT}" = "" ] ; then
+	OUTPUT=$1
+
+    else
+	echo "error in get_data.sh: $1 is not supported."
+	exit 1
+    fi
+
+    shift
+done
+
+if [ ${VERBOSE} -gt 0 ] ; then
+    echo "CTL: ${CTL}"
+    echo "VAR: ${VAR}"
+    echo "OUTPUT: ${OUTPUT}"
+    
+    echo "TMIN: ${TMIN}"
+    echo "TMAX: ${TMAX}"
+    echo "TINT: ${TINT}"
+    echo "YMD_MIN: ${YMD_MIN}"
+    echo "YMD_MAX: ${YMD_MAX}"
+fi
+
+if [ "${YMD_MIN}" != "" -a "${YMD_MAX}" != "" ] ; then
+    GRADS_MIN=$( date --date "${YMD_MIN}" +00z%d%b%Y )
+    GRADS_MAXPP=$( date --date "${YMD_MAX} 1 days" +00z%d%b%Y )
+fi
+
+GS=temp_get_data_$$.gs
+
+cat > ${GS} <<EOF
+'reinit'
+rc = gsfallow( 'on' )
+'xopen ${CTL}'
+'set gxout fwrite'
+'set fwrite -be ${OUTPUT}'
+'set undef -0.99900E+35'
+xdef = qctlinfo( 1, "xdef", 1 )
+ydef = qctlinfo( 1, "ydef", 1 )
+zdef = qctlinfo( 1, "zdef", 1 )
+say xdef
+'set x 1 'xdef
+'set y 1 'ydef
+EOF
+
+if [ "${GRADS_MIN}" != "" -a "${GRADS_MAXPP}" != "" ] ; then
+    cat >> ${GS} <<EOF
+tmin = time2t( '${GRADS_MIN}' )
+tmax = time2t( '${GRADS_MAXPP}' ) - 1
+EOF
+else
+    cat >> ${GS} <<EOF
+tmin = ${TMIN}
+tmax = ${TMAX}
+EOF
+fi
+
+cat >> ${GS} <<EOF
+t = tmin
+while( t <= tmax )
+  say 't = ' % t
+  'set t 't
+  z = 1
+  while( z <= zdef )
+*    say '  z = ' % z
+    'set z 'z
+    'd ${VAR}'
+    z = z + 1
+  endwhile
+  t = t + ${TINT}
+endwhile
+'disable fwrite'
+'quit'
+EOF
+if [ ${VERBOSE} -gt 0 ] ; then
+    cat ${GS}
+    grads -blc ${GS}
+else
+    grads -blc ${GS} > /dev/null
+fi
+
+rm ${GS}
+
