@@ -1,7 +1,15 @@
 #!/bin/sh
+export LANG=en
 
 CTL=$1
 TIME=$2
+
+# TIME is YYYYMMDD?
+FLAG=$( echo "${TIME}" | grep -e "^[0-9]\{8\}" )
+if [ "${FLAG}" != "" ] ; then
+    TIME=$( date --date "${TIME}" +00z%d%b%Y )
+fi
+
 
 cat > temp_grads_time2t_tmp_$$.gs <<EOF
 'reinit'
