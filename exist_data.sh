@@ -1,21 +1,32 @@
 #!/bin/sh
+#
+# check existence of files
+#
+# If succeed, output "ok" and list of filename
+#
 
+# control file name
 CTL=$1
+
+# start and end time (e.g. 00z01jun2004)
 TIME_START=$2
 TIME_END=$3
-TIME_END_FLAG=$4  # =""(default) or "PP" (ENDPP) or "MMPP" (STARTMM & ENDPP) (optional)
 
-#CTL=/cwork5/kodama/nicam_product/APE3_p4k_by_iga/run/data_conv/sl/2560x1280/3hr_tstep/sl_slp/sl_slp.ctl
-#TIME_START="03z02jan2000"
-#TIME_END="03z06jan2000"
-#TIME_END_FLAG=""
+# flag to specify exact time range (optional)
+#   = ""     : [TIME_START:TIME_END]
+#   = "MM"   : (TIME_START:TIME_END]
+#   = "PP"   : [TIME_START:TIME_END)
+#   = "MMPP":  (TIME_START:TIME_END)
+TIME_FLAG=$4
+
+#-------------------------------------------------------#
+
+if [ ! -f "${CTL}" ] ; then
+    echo "error in exist_data.sh: CTL=${CTL} does not exist."
+    exit 1
+fi
 
 TEMP=$( date +%s )
-
-#
-# TIME_START -> tmin
-# TIME_END -> tmax (including PP support)
-#
 cat > exist_data_${TEMP}.gs <<EOF
 'reinit'
 rc = gsfallow( 'on' )
@@ -24,10 +35,10 @@ type = sublin( result, 1 )
 type = subwrd( type, 2 )
 tmin = time2t( '${TIME_START}' )
 tmax = time2t( '${TIME_END}' )
-if( '${TIME_END_FLAG}' = 'PP' | '${TIME_END_FLAG}' = 'MMPP' )
+if( '${TIME_FLAG}' = 'PP' | '${TIME_FLAG}' = 'MMPP' )
   tmax = tmax - 1
 endif
-if( '${TIME_END_FLAG}' = 'MM' | '${TIME_END_FLAG}' = 'MMPP' )
+if( '${TIME_FLAG}' = 'MM' | '${TIME_FLAG}' = 'MMPP' )
   tmin = tmin + 1
 endif
 ret = write( "exist_data_${TEMP}.txt", tmin )
@@ -42,22 +53,28 @@ TMIN=$( sed exist_data_${TEMP}.txt -e "1,1p" -e d )
 TMAX=$( sed exist_data_${TEMP}.txt -e "2,2p" -e d )
 #TYPE=$( sed exist_data_${TEMP}.txt -e "3,3p" -e d )
 rm exist_data_${TEMP}.gs exist_data_${TEMP}.txt
+#echo "${TYPE}"
 #echo "${TMIN} ${TMAX}"
+#echo "ok"
+#exit
 
 
 if [ "${TYPE}" = "open" ] ; then
     EXT="grd"
+    XDEF=$( grads_ctl.pl ctl="${CTL}" key="XDEF" target="NUM" )
+    YDEF=$( grads_ctl.pl ctl="${CTL}" key="YDEF" target="NUM" )
+    ZDEF=$( grads_ctl.pl ctl="${CTL}" key="ZDEF" target="NUM" )
+    VDEF=$( grep -i "^VARS" ${CTL} | awk '{ print $2 }' )
+
 elif [ "${TYPE}" = "xdfopen" ] ; then
     EXT="nc"
 else
-    echo "error: TYPE=${TYPE} is not supported.">&2
+    echo "error: TYPE=${TYPE} is not supported." >&2
     exit 1
 fi
 
 
 DSET=$( grep -i "^DSET" ${CTL} )
-
-
 TEMP=$( echo ${DSET} | grep "%ch" )
 
 # if DSET include %ch ...
@@ -68,8 +85,8 @@ if [ "${TEMP}" != "" ] ; then
     LIST_TMIN=( )
     LIST_TMAX=( )
     LIST_CHSUB=( )
-    CHSUB_TMIN=( $( grep -i "^CHSUB" ${CTL} | awk '{ print $2 }' ) )
-    CHSUB_TMAX=( $( grep -i "^CHSUB" ${CTL} | awk '{ print $3 }' ) )
+    CHSUB_TMIN=(  $( grep -i "^CHSUB" ${CTL} | awk '{ print $2 }' ) )
+    CHSUB_TMAX=(  $( grep -i "^CHSUB" ${CTL} | awk '{ print $3 }' ) )
     CHSUB_CHSUB=( $( grep -i "^CHSUB" ${CTL} | awk '{ print $4 }' ) )
     for(( f=0; ${f}<${#CHSUB_CHSUB[@]}; f=${f}+1 )) ; do
 #    echo ${f} ${CHSUB_TMIN[$f]} ${CHSUB_TMAX[$f]}
@@ -93,10 +110,8 @@ if [ "${TEMP}" != "" ] ; then
 	fi
     done
     
-    
     STATUS="ok"
-    
-    
+        
     FILE_LIST=()
     for(( f=0; ${f}<${#LIST_CHSUB[@]}; f=${f}+1 )) ; do
 	DIR=${CTL%${CTL##*/}}
@@ -118,18 +133,10 @@ if [ "${TEMP}" != "" ] ; then
 
 	[ "${EXT}" = "nc" ] && continue
 
-	XDEF=$( grads_ctl.pl ctl="${CTL}" key="XDEF" target="NUM" )
-	YDEF=$( grads_ctl.pl ctl="${CTL}" key="YDEF" target="NUM" )
-	ZDEF=$( grads_ctl.pl ctl="${CTL}" key="ZDEF" target="NUM" )
-	VDEF=$( grep -i "^VARS" ${CTL} | awk '{ print $2 }' )
-
         # file size check
-	TINT=$( echo "${LIST_TMAX[$f]} - ${LIST_TMIN[$f]} + 1" | bc )
-#	echo ${TINT}
-
+	let TINT=LIST_TMAX[$f]-LIST_TMIN[$f]+1
 	SIZE_OUT=$( ls -lL ${FILE_LIST[$f]} | awk '{ print $5 }' )
 	SIZE_OUT_EXACT=$( echo 4*${XDEF}*${YDEF}*${ZDEF}*${VDEF}*${TINT} | bc )
-
 	if [ ${SIZE_OUT} -ne ${SIZE_OUT_EXACT} ] ; then
 	    STATUS="fail_file_size"
 	    break
