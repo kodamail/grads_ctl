@@ -4,11 +4,6 @@
 #
 use strict;
 my $ver="0.10b2";
-
-#use CGI;
-#my $cgi = new CGI;
-
-
 #
 ############################################################
 #
@@ -34,15 +29,8 @@ my @KEYWORD_ML = ( "XDEF", "YDEF", "ZDEF", "EDEF" );
 #my %f_tunit = ( "SEC" => 1, "MN" => 60, "HR" => 3600, "DY" => 86400 );
 my %FAC_TUNIT = ( "SEC" => 1, "MN" => 60, "HR" => 3600, "DY" => 86400 );
 #
-
-if( $#ARGV < 0 )
-{
-    &help();
-}
-else
-{
-    &main();
-}
+if( $#ARGV < 0 ){ &help(); }
+else            { &main(); }
 exit;
 
 sub main()
@@ -67,7 +55,7 @@ sub main()
 	elsif( "$ARGV[$i]" eq "--unit"    ){ $i++; $arg{unit}   = uc( $ARGV[$i] ); }
 	elsif( "$ARGV[$i]" eq "--value"   ){ $i++; $arg{value}  =     $ARGV[$i];   }
 	elsif( "$ARGV[$i]" eq "--var"     ){ $i++; $arg{var}    = uc( $ARGV[$i] ); }
-	elsif( "$ARGV[$i]" eq "--xdfopen" ){ $arg{xdfopen} = 1; }
+#	elsif( "$ARGV[$i]" eq "--xdfopen" ){ $arg{xdfopen} = 1; }
 	else{ print STDERR "syntax error: $ARGV[$i]\n"; exit 1; }
 	$i++;
     }
@@ -87,13 +75,16 @@ sub main()
     ############################################################
     #
     my %desc;
-
+    #
+    # NetCDF
     if( $arg{nc} ne "" )
     {
 	my $tmp = `$arg{ncdump} -c $arg{nc}`;
 	my @nc = split( /\n/, $tmp );
-	&ana_nc( \@nc, \%desc );
+	&ana_nc( \@nc, \%desc );  # NetCDF -> %desc (internal)
     }
+    #
+    # control file
     else
     {
 	my @tmp;
@@ -114,17 +105,13 @@ sub main()
 	{
 	    @tmp = <STDIN>;
 	}
-	if( $arg{xdfopen} eq 1 ){ &ana_ctl( \@tmp, 1, \%desc ); }
-	else                    { &ana_ctl( \@tmp, 0, \%desc ); }
+	&ana_ctl( \@tmp, \%desc );
 	
         #
         #----- analyze NetCDF if DSET filename is NetCDF
 	#
 	if( $desc{DSET} =~ /\.nc/i )
 	{
-	    #print "NetCDF\n";
-	    #print $desc_in{DSET} . "\n";
-
 	    my $nc_filename = $desc{DSET};
 	    my $dir = $arg{ctl};
 	    $dir =~ s|[^/]*$||;
@@ -140,8 +127,7 @@ sub main()
 	    #print $desc_in{TDEF}->{LINEAR}->[0] . "\n";
 
 	    # overwrite by control file (analyze again)
-	    if( $arg{xdfopen} eq 1 ){ &ana_ctl( \@tmp, 1, \%desc ); }
-	    else                    { &ana_ctl( \@tmp, 0, \%desc ); }
+	    &ana_ctl( \@tmp, \%desc );
 
 	}
     
@@ -161,6 +147,8 @@ sub main()
         #
         if( "$arg{key}" eq "OPTIONS" )
         {
+	    if( "$arg{target}" eq "" ){ &dump_ctl( \%desc, "OPTIONS" ); exit; }
+	    #
 	    if( defined( $desc{OPTIONS}->{$arg{target}} ) )
 	    {
 		if( $desc{OPTIONS}->{$arg{target}} eq 1 ){ print "1\n"; exit; }
@@ -304,69 +292,42 @@ sub main()
     {
 	print "dump as control file is\n";
 	print "under construction\n";
+	
+	print "\n";
+	&dump_ctl( \%desc, "OPTIONS" );
+	print "\n";
 	exit 1;
     }
 
     return;
 }
 
-=pod
 
-
+#
 ############################################################
 #
-# obtain results for the user-specified key
+# dump for control file
 #
 ############################################################
-
-$args{$key} =~ s/\s+/ /g;
-my @args_out = split( / /, $args{$key} );
-
-
 #
-# key = VAR  var = var-name
-#   target = LEVS    : number of levels
-#   target = UNITS   : 
-#   target = COMMENT : description
-#
-if( $key eq "VAR" )
+sub dump_ctl()
 {
-    my $args = $vargs{$var};
-    if( $args eq "" ){ print STDERR "var=" . $var . " does not exist.\n"; exit; }
-    if( $target eq "LEVS" )
+    my $desc = shift;
+    my $key  = shift;
+
+    if( "$key" eq "OPTIONS" )
     {
-	if( $args =~ /^ *(\d+)/ ){ print $1; exit; }
-	else{ print STDERR "syntax error in VAR LEVS.\n"; exit; }
+	print $key;
+	while ( my ( $key, $val ) = each %{$$desc{OPTIONS}} )
+	{
+	    if( $val == 1 ){ print " " . $key; }
+	}
+	print "\n";
     }
-    if( $target eq "UNITS" )
-    {
-#	if( $args =~ /^ *(\d+) *([\d,]+)/ ){ print $2; exit; }
-#	if( $args =~ /^ *(\d+)  *([\d,-]+)/ ){ print $2; exit; }
-	if( $args =~ /^ *(\d+)  *([^ ]+)/ ){ print $2; exit; }
-	else{ print STDERR "syntax error in VAR UNITS.\n"; exit; }
-    }
-    if( $target eq "COMMENT" )
-    {
-	$args =~ s/\*/\\\*/g;  # sanitize *
-	if( $args =~ /^ *(\d+) +([\d,]+) +(.*)$/ ){ print $3; exit; }
-	else{ print STDERR "syntax error in VAR COMMENTS.\n"; exit; }
-    }
-    print STDERR "target=" . $target . " does not exist in key=VAR, ctl=" . $fname_ctl . ".\n";
-    exit;
+
+
+
 }
-
-
-#
-# key = key : get all the elements of specified key
-#
-if( $args{$key} ne "" ){ print $args{$key} ; exit; }
-
-
-print STDERR "key=" . $key . " does not exist in " . $fname_ctl . "\n";
-exit;
-
-
-=cut
 
 
 #
@@ -379,7 +340,7 @@ exit;
 sub ana_ctl()
 {
     my $ctl      = shift;
-    my $xdfopen  = shift;  # 0 or 1
+#    my $xdfopen  = shift;  # 0 or 1
     my $desc     = shift;
 
     my %args;          # arguements for each key
@@ -438,7 +399,8 @@ sub ana_ctl()
     {
 	if( $args{${KEYWORD[$j]}} eq "" ){ next; }
 	#$args{${KEYWORD[$j]}} =~ s/\n+$//;
-	my @tmp = split /\s+/, $args{${KEYWORD[$j]}};
+	my @tmp = split /\s+/, $args{${KEYWORD[$j]}};  # line(s) for key=${KEYWORD[$j]}
+#	print $args{${KEYWORD[$j]}} . "\n";
 	#
 	# single value
 	#
@@ -520,7 +482,9 @@ sub ana_ctl()
 	       || "$KEYWORD[$j]" eq "ZDEF"
 	       || "$KEYWORD[$j]" eq "TDEF" )
 	{
-	    if( $xdfopen eq 1 ){ shift(@tmp); }
+	    if( $tmp[0] !~ /^[0-9]+$/ ){ shift(@tmp); }  # possible xdfopen style -> shift
+#	    if( $xdfopen eq 1 ){ shift(@tmp); }
+
 	    $tmp[1] = uc( $tmp[1] );
 	    $ref = { "$tmp[1]" => "", "NUM" => "$tmp[0]", "TYPE" => "$tmp[1]" };
 	    $$desc{$KEYWORD[$j]} = $ref;
@@ -852,6 +816,7 @@ sub levels()
 }    
 
 
+
 sub help()
 {
     print << "EOF"
@@ -860,9 +825,27 @@ Name:
 
 Usage:
   grads_ctl2.pl
-    [--ctl ctl-filename | --nc netcdf-filename] [--xdfopen]
-    [--key keyword [--target target] [-unit unit] [--var var] [--value value]]
+    [--ctl ctl-filename | --nc netcdf-filename]
+    [--key keyword [--target target] [-unit unit] [--var var] [--value value] ]
     [--ncdump fullpath-to-ncdump]
+
+Options:
+  --key "OPTIONS"
+    Output all the OPTIONS in control-file style.
+
+  --key "OPTIONS" --target target
+    target = ( "TEMPLATE" | "BIG_ENDIAN" | "XREV" ... )
+      Output 1 or 0 if specified or not-specified.
+
+
+"UNDEF"
+    keyword = XYZDEF
+    keyword = var-name
+
+Examples:
+  grads_ctl2.pl --ctl abc.ctl --key XDEF --target NUM
+    Display number of levels in X coordinate.
+
 EOF
 #    [--force-xdef?]
 
