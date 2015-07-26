@@ -81,6 +81,17 @@ sub main()
     #
     my %desc;
     #
+    # default
+    #
+    if ( ! defined( $desc{EDEF} ) )
+    {
+	my $ref = { "NAMES" => "", "NUM" => "1", "TYPE" => "NAMES" };
+	$desc{EDEF} = $ref;
+	$ref = [ "NONE" ];
+	$desc{EDEF}->{NAMES} = $ref;
+    }
+    #
+    #
     # NetCDF
     if( $arg{nc} ne "" )
     {
@@ -184,7 +195,7 @@ sub main()
         #
         #----- key = XDEF, YDEF, ZDEF, TDEF
         #
-	elsif( $arg{key} =~ /^(XDEF|YDEF|ZDEF|TDEF)$/ )
+	elsif( $arg{key} =~ /^(XDEF|YDEF|ZDEF|TDEF|EDEF)$/ )
 	{
             # target = "NUM": number of grids
 	    if( "$arg{target}" eq "NUM" )
@@ -198,7 +209,7 @@ sub main()
 		exit;
 	    }
 	    #
-	    # target = "TYPE": level type (LINEAR or LEVELS)
+	    # target = "TYPE": level type (LINEAR, LEVELS, or NAMES)
 	    elsif( "$arg{target}" eq "TYPE" )
 	    {
 		if( defined ( $desc{${arg{key}}} ) )
@@ -299,15 +310,18 @@ sub main()
 	    if( "$arg{target}" eq "NUM" )
 	    {
 		if(    defined( $desc{XDEF} ) && defined( $desc{YDEF} ) 
-		    && defined( $desc{ZDEF} ) && defined( $desc{TDEF} ) )
+		    && defined( $desc{ZDEF} ) && defined( $desc{TDEF} )
+		    && defined( $desc{EDEF} ) )
 		{
 		    if(    defined( $desc{XDEF}->{NUM} ) && defined( $desc{YDEF}->{NUM} ) 
-			&& defined( $desc{ZDEF}->{NUM} ) && defined( $desc{TDEF}->{NUM} ) )
+			&& defined( $desc{ZDEF}->{NUM} ) && defined( $desc{TDEF}->{NUM} )
+	                && defined( $desc{EDEF}->{NUM} ) )
 		    {
 			print $desc{XDEF}->{NUM} . " " 
 			    . $desc{YDEF}->{NUM} . " " 
 			    . $desc{ZDEF}->{NUM} . " " 
-			    . $desc{TDEF}->{NUM} . "\n";
+			    . $desc{TDEF}->{NUM} . " "
+			    . $desc{EDEF}->{NUM} . "\n";
 			exit;
 		    }
 		}
@@ -372,6 +386,7 @@ sub main()
 	&dump_ctl( \%desc, "YDEF" );
 	&dump_ctl( \%desc, "ZDEF" );
 	&dump_ctl( \%desc, "TDEF" );
+	&dump_ctl( \%desc, "EDEF" );
 	&dump_ctl( \%desc, "VARS" );
 	exit;
 
@@ -395,6 +410,7 @@ sub dump_ctl()
     my $desc = shift;
     my $key  = shift;
 
+    #print "ok\n";
     if( ! defined( $$desc{$key} ) && "$key" ne "DIMS" ){ return -1; }
 
     #
@@ -432,7 +448,7 @@ sub dump_ctl()
 	return 0;
     }
     #
-    elsif( $key =~ /^(XDEF|YDEF|ZDEF|TDEF)$/ )
+    elsif( $key =~ /^(XDEF|YDEF|ZDEF|TDEF|EDEF)$/ )
     {
 	return &dump_ctl_dims( $desc, $key );
     }
@@ -444,6 +460,7 @@ sub dump_ctl()
 	$ret += &dump_ctl_dims( $desc, "YDEF" );
 	$ret += &dump_ctl_dims( $desc, "ZDEF" );
 	$ret += &dump_ctl_dims( $desc, "TDEF" );
+	$ret += &dump_ctl_dims( $desc, "EDEF" );
 	return $ret;
     }
     #
@@ -476,6 +493,7 @@ sub dump_ctl_dims
     my $key  = shift;
 
     if( ! defined( $$desc{$key} ) ){ return -1; }
+    if( $$desc{$key}->{NUM} == 1 && $$desc{$key}->{NAMES}->[0] eq "NONE" ){ return 0; }
 
     print $key . "  " 
 	. sprintf( "%6s", $$desc{$key}->{NUM} ) 
@@ -485,9 +503,16 @@ sub dump_ctl_dims
 	print "  " . sprintf( "%14s", $$desc{$key}->{LINEAR}->[0] )
 	    . "  " . sprintf( "%14s", $$desc{$key}->{LINEAR}->[1] );
     }
+    elsif( "$$desc{$key}->{TYPE}" eq "NAMES" )
+    {
+	for( my $i=0; $i<$$desc{$key}->{NUM}; $i++ )
+	{
+	    print "  " . $$desc{$key}->{NAMES}->[$i];
+	}
+    }
     else
     {
-	print "\n";
+	if( $$desc{$key}->{NUM} > 1 ){ print "\n"; }
 	for( my $i=0; $i<$$desc{$key}->{NUM}; $i++ )
 	{
 	    if( $i > 0 )
@@ -642,17 +667,19 @@ sub ana_ctl()
 #	    print $$desc{$KEYWORD[$j]}->{STR}->[0] . "\n";
 	}
 	#
-	#----- XDEF (, YDEF, ZDEF, TDEF)
+	#----- XDEF (, YDEF, ZDEF, TDEF, EDEF)
 	# 
 	# $$desc{XDEF}->{NUM}: number of levels
 	# $$desc{XDEF}->{TYPE}: type of levels (LINEAR or LEVELS)
 	# $$desc{XDEF}->{LEVELS}->[]: each level
+	# $$desc{EDEF}->{NAME}->[]  : each name for ensemble dimension
 	# $$desc{XDEF}->{LINEAR}->[]: start and increment
 	#
 	elsif(    "$KEYWORD[$j]" eq "XDEF" 
 	       || "$KEYWORD[$j]" eq "YDEF" 
 	       || "$KEYWORD[$j]" eq "ZDEF"
-	       || "$KEYWORD[$j]" eq "TDEF" )
+	       || "$KEYWORD[$j]" eq "TDEF" 
+	       || "$KEYWORD[$j]" eq "EDEF" )
 	{
 	    if( $tmp[0] !~ /^[0-9]+$/ ){ shift(@tmp); }  # possible xdfopen style -> shift
 #	    if( $xdfopen eq 1 ){ shift(@tmp); }
@@ -670,6 +697,12 @@ sub ana_ctl()
 		# calculate start and increment if possible
 		&levels2linear( $desc, $KEYWORD[$j] );
 
+	    }
+	    elsif( "$tmp[1]" eq "NAMES" && "$KEYWORD[$j]" eq "EDEF" )
+	    {
+		$ref = [ @tmp[2..$#tmp] ];
+		$$desc{$KEYWORD[$j]}->{NAMES} = $ref;
+		# note: expanded expression of EDEF is not supported now.
 	    }
 	    elsif( "$tmp[1]" eq "LINEAR" )
 	    {
@@ -998,7 +1031,7 @@ Usage:
     [--ncdump fullpath-to-ncdump]
 
 Options:
-  --key ( "DSET" | "TITLE" | "CHSUB" | "OPTIONS" | "UNDEF" | "XDEF" | "YDEF" | "ZDEF" | "TDEF" | "DIMS")
+  --key ( "DSET" | "TITLE" | "CHSUB" | "OPTIONS" | "UNDEF" | "XDEF" | "YDEF" | "ZDEF" | "TDEF" | "EDEF" | "DIMS")
     Output all in control-file style. "DIMS" for all the dimensions.
 
   --key ( "DSET" | "TITLE" | "UNDEF" ) --target "value"
@@ -1008,11 +1041,13 @@ Options:
     target = ( "TEMPLATE" | "BIG_ENDIAN" | "XREV" ... )
       Output 1 or 0 if specified or not-specified.
 
-  --key ( "XDEF" | "YDEF" | "ZDEF" | "TDEF" )  --target target
+  --key ( "XDEF" | "YDEF" | "ZDEF" | "TDEF" | "EDEF" )  --target target
     target = "NUM"
       Number of levels.
     target = "TYPE"
       Type of levels. "LINEAR" or "LEVELS". Output none if not specified.
+
+  --key ( "XDEF" | "YDEF" | "ZDEF" | "TDEF" )  --target target
     target = "INC" [--unit unit]
       Increment. 
     target = ( "ALL" | "ALL-LEVELS" )
@@ -1036,7 +1071,7 @@ Options:
       All the name of variables.
 
   Below keywords are not supported now:
-    keyword = "EDEF", "DTYPE", "INDEX", "STNMAP", "UNPACK", "FILEHEADER", "XYHEADER", "THEADER", "HEADERBYTES", "TRAILERBYTES", "XVAR", "YVAR", "ZVAR", "STID", "TVAR", "TOFFVAR", "PDEF", "VECTORPAIRS"
+    keyword = "DTYPE", "INDEX", "STNMAP", "UNPACK", "FILEHEADER", "XYHEADER", "THEADER", "HEADERBYTES", "TRAILERBYTES", "XVAR", "YVAR", "ZVAR", "STID", "TVAR", "TOFFVAR", "PDEF", "VECTORPAIRS"
 
 Examples:
   grads_ctl.pl abc.ctl xdef num
@@ -1044,6 +1079,6 @@ Examples:
 
 EOF
 #    [--force-xdef?]
-    return 0;
+#    return 0;
 }
 exit 1;
