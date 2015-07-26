@@ -5,6 +5,14 @@
 # If succeed, output "ok" and list of filename
 #
 
+if [ "$3" = "" ] ; then
+    cat <<EOF # control file name
+usage:
+ exist_data.sh ctl-filename time-start time-end [time-flag]
+EOF
+    exit
+fi
+
 # control file name
 CTL=$1
 
@@ -20,6 +28,8 @@ TIME_END=$3
 TIME_FLAG=$4
 
 #-------------------------------------------------------#
+export PATH=$( pwd ):${PATH}
+export LANG=en
 
 if [ ! -f "${CTL}" ] ; then
     echo "error in exist_data.sh: CTL=${CTL} does not exist."
@@ -70,6 +80,7 @@ if [ "${TYPE}" = "open" ] ; then
 
 elif [ "${TYPE}" = "xdfopen" ] ; then
     EXT="nc"
+
 else
     echo "error: TYPE=${TYPE} is not supported." >&2
     exit 1
@@ -81,9 +92,9 @@ TEMP=$( echo ${DSET} | grep "%ch" )
 
 # if DSET include %ch ...
 if [ "${TEMP}" != "" ] ; then
-#
-# create CHSUB_LIST which is necessary
-#
+    #
+    # create CHSUB_LIST which is necessary
+    #
     LIST_TMIN=( )
     LIST_TMAX=( )
     LIST_CHSUB=( )
@@ -91,7 +102,6 @@ if [ "${TEMP}" != "" ] ; then
     CHSUB_TMAX=(  $( grep -i "^CHSUB" ${CTL} | awk '{ print $3 }' ) )
     CHSUB_CHSUB=( $( grep -i "^CHSUB" ${CTL} | awk '{ print $4 }' ) )
     for(( f=0; ${f}<${#CHSUB_CHSUB[@]}; f=${f}+1 )) ; do
-#    echo ${f} ${CHSUB_TMIN[$f]} ${CHSUB_TMAX[$f]}
 	HIT=0
 	
 	if [   ${CHSUB_TMIN[$f]} -le ${TMIN} \
@@ -152,6 +162,63 @@ if [ "${TEMP}" != "" ] ; then
     done
 
 else
-    echo "except %ch is not supported"
-    exit 1
+
+    DIR=${CTL%${CTL##*/}}
+#    DSET=$( echo ${DSET} | sed -e "s/^DSET \+^\?//i" )
+    TMP_TIME_LIST=( dummy $( grads_ctl.pl ${CTL} TDEF ALL ) ) || exit 1
+    TIME_LIST=( )
+    for(( i=${TMIN}; $i<=${TMAX}; i=$i+1 )) ; do
+	TIME_LIST[${#TIME_LIST[@]}]=${TMP_TIME_LIST[$i]}
+    done
+
+    FILE_LIST=( )
+    TDEF_LIST=( )
+    FILE_PREV=""
+    for TIME in ${TIME_LIST[@]} ; do
+	Y4=$( date -u --date "${TIME}" +%Y )
+	M2=$( date -u --date "${TIME}" +%m )
+	FILE=$( echo ${DSET} | sed \
+	    -e "s/%y4/${Y4}/g" \
+	    -e "s/%m2/${M2}/g" \
+	    -e "s|DSET  *^|${DIR}|" \
+	    -e "s|DSET  *||" \
+	    )
+	if [ "${FILE}" != "${FILE_PREV}" ] ; then
+	    FILE_LIST[${#FILE_LIST[@]}]=${FILE}
+	    TDEF_LIST[${#TDEF_LIST[@]}]=1
+	    FILE_PREV=${FILE}
+	else
+	    let TDEF_LIST[${#TDEF_LIST[@]}-1]++	      # todo: check
+	fi
+    done
+
+    STATUS="ok"
+    for(( f=0; ${f}<${#FILE_LIST[@]}; f=${f}+1 )) ; do
+
+	# check file existence 
+	if [ ! -f ${FILE_LIST[$f]} ] ; then
+	    STATUS="fail_file_exist"
+	    break
+	fi
+
+	[ "${EXT}" = "nc" ] && continue
+
+        # file size check
+#	let TINT=LIST_TMAX[$f]-LIST_TMIN[$f]+1
+	SIZE_OUT=$( ls -lL ${FILE_LIST[$f]} | awk '{ print $5 }' )
+	SIZE_OUT_EXACT=$( echo 4*${XDEF}*${YDEF}*${ZDEF}*${VDEF}*${TDEF_LIST[$f]} | bc )
+	if [ ${SIZE_OUT} -ne ${SIZE_OUT_EXACT} ] ; then
+	    STATUS="fail_file_size"
+	    break
+	fi
+    done
+    
+    # display
+    echo ${STATUS}
+    for FILE in ${FILE_LIST[@]} ; do
+	echo ${FILE}
+    done
+    
+#    echo "except %ch is not supported"
+#    exit 1
 fi
