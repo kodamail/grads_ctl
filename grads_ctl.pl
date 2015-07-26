@@ -976,17 +976,29 @@ sub linear2levels()
     elsif( "$key" eq "TDEF" )
     {
 	my $f_tunit;
-	if( $incre=~ /^(\d+)(SEC|MN|HR|DY)$/ )
+	if( $incre =~ /^(\d+)(SEC|MN|HR|DY)$/ )
 	{
 	    $f_tunit = $FAC_TUNIT{uc($2)};
 	    $incre = $1 * $f_tunit * ( $index - 1 );
+	    $ret = `export LANG=en ; date -u --date "$start $incre seconds" +%H:%MZ%d%b%Y`;
+	    $ret =~ s/\n//;
+	}
+	elsif( $incre =~ /^(\d+)(MO)$/ )
+	{
+	    $incre = $1 * ( $index - 1 );
+	    $ret = `export LANG=en ; date -u --date "$start $incre months" +%H:%MZ%d%b%Y`;
+	    $ret =~ s/\n//;
+	}
+	elsif( $incre =~ /^(\d+)(YR)$/ )
+	{
+	    $incre = $1 * ( $index - 1 );
+	    $ret = `export LANG=en ; date -u --date "$start $incre years" +%H:%MZ%d%b%Y`;
+	    $ret =~ s/\n//;
 	}
 	else
 	{
 	    print STDERR "error: TDEF increment = $incre\n";
 	}
-	$ret = `export LANG=en ; date -u --date "$start $incre seconds" +%H:%MZ%d%b%Y`;
-	$ret =~ s/\n//;
     }
     
     else
