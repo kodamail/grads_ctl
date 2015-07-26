@@ -1,9 +1,9 @@
 #!/usr/bin/perl
 #
-# type "./grads_ctl2.pl" or see end of file for help
+# type "./grads_ctl.pl" or see end of file for help
 #
 use strict;
-my $ver="0.10b2";
+my $ver="0.20r1";
 #
 ############################################################
 #
@@ -989,10 +989,10 @@ sub help()
 {
     print << "EOF"
 Name:
-  grads_ctl2.pl Version $ver
+  grads_ctl.pl Version $ver
 
 Usage:
-  grads_ctl2.pl
+  grads_ctl.pl
     [ [--ctl] ctl-filename | [--nc] netcdf-filename]
     [ [--key] keyword [ [--target] target] [--unit unit] [--var var] [--value value] ]
     [--ncdump fullpath-to-ncdump]
@@ -1039,7 +1039,7 @@ Options:
     keyword = "EDEF", "DTYPE", "INDEX", "STNMAP", "UNPACK", "FILEHEADER", "XYHEADER", "THEADER", "HEADERBYTES", "TRAILERBYTES", "XVAR", "YVAR", "ZVAR", "STID", "TVAR", "TOFFVAR", "PDEF", "VECTORPAIRS"
 
 Examples:
-  grads_ctl2.pl abc.ctl xdef num
+  grads_ctl.pl abc.ctl xdef num
     Display number of levels in X coordinate.
 
 EOF
