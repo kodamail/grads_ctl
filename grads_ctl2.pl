@@ -55,7 +55,12 @@ sub main()
 	elsif( "$ARGV[$i]" eq "--unit"    ){ $i++; $arg{unit}   = uc( $ARGV[$i] ); }
 	elsif( "$ARGV[$i]" eq "--value"   ){ $i++; $arg{value}  =     $ARGV[$i];   }
 	elsif( "$ARGV[$i]" eq "--var"     ){ $i++; $arg{var}    = uc( $ARGV[$i] ); }
-#	elsif( "$ARGV[$i]" eq "--xdfopen" ){ $arg{xdfopen} = 1; }
+	#
+	elsif( $ARGV[$i] =~ /\.ctl$/ && $arg{ctl}    eq "" ){ $arg{ctl}    =     $ARGV[$i];   }
+	elsif( $ARGV[$i] =~ /\.nc$/  && $arg{nc}     eq "" ){ $arg{nc}     =     $ARGV[$i];   }
+	elsif(                          $arg{key}    eq "" ){ $arg{key}    = uc( $ARGV[$i] ); }
+	elsif(                          $arg{target} eq "" ){ $arg{target} = uc( $ARGV[$i] ); }
+	#
 	else{ print STDERR "syntax error: $ARGV[$i]\n"; exit 1; }
 	$i++;
     }
@@ -106,7 +111,6 @@ sub main()
 	    @tmp = <STDIN>;
 	}
 	&ana_ctl( \@tmp, \%desc );
-	
         #
         #----- analyze NetCDF if DSET filename is NetCDF
 	#
@@ -124,77 +128,106 @@ sub main()
 	    my @nc = split( /\n/, $tmp );
 	    &ana_nc( \@nc, \%desc );
 
-	    #print $desc_in{TDEF}->{LINEAR}->[0] . "\n";
-
 	    # overwrite by control file (analyze again)
 	    &ana_ctl( \@tmp, \%desc );
-
 	}
-    
     }
     #
     ############################################################
     #
-    # get value (specified by --key)
+    # output (see help() for details)
     #
     ############################################################
     #
     if( "$arg{key}" ne "" )
     {
+	#
+	# target = "" -> output in control-file style
+	#
+	if( "$arg{target}" eq "" )
+	{
+	    my $ret = &dump_ctl( \%desc, "$arg{key}" );
+	    if( $ret != 0 )
+	    {
+		print STDERR "syntax error; key=$arg{key} is not supported.\n";
+		exit 1;
+	    }
+	    exit;
+	}
+
+        #
+        #----- key = "DSET", "UNDEF" : value
+        #
+        elsif( $arg{key} =~ /^(DSET|UNDEF|TITLE)$/ && "$arg{target}" eq "VALUE" )
+        {
+	    if( defined( $desc{$arg{key}} ) ){ print $desc{$arg{key}} . "\n"; }
+	    exit;
+	}
+
         #
         #----- key = OPTIONS : true (1) or false (0)
         #   target = XREV, YREV, ZREV, etc...
         #
-        if( "$arg{key}" eq "OPTIONS" )
+        elsif( "$arg{key}" eq "OPTIONS" )
         {
-	    if( "$arg{target}" eq "" ){ &dump_ctl( \%desc, "OPTIONS" ); exit; }
-	    #
-	    if( defined( $desc{OPTIONS}->{$arg{target}} ) )
+	    if( defined( $desc{OPTIONS} ) )
 	    {
-		if( $desc{OPTIONS}->{$arg{target}} eq 1 ){ print "1\n"; exit; }
+		if( defined( $desc{OPTIONS}->{$arg{target}} ) )
+		{
+		    if( $desc{OPTIONS}->{$arg{target}} eq 1 ){ print "1\n"; exit; }
+		}
 	    }
 	    print "0\n";
 	    exit;
 	}
 
         #
-        #----- key = UNDEF : value
+        #----- key = XDEF, YDEF, ZDEF, TDEF
         #
-        if( "$arg{key}" eq "UNDEF" )
-        {
-	    print $desc{UNDEF} . "\n";
-	    exit;
-	}
-
-        #
-        #----- key = XDEF, YDEF, ZDEF, TDEF, EDEF
-        #
-	if( $arg{key} =~ /^(XDEF|YDEF|ZDEF|TDEF|EDEF)$/ )
+	elsif( $arg{key} =~ /^(XDEF|YDEF|ZDEF|TDEF)$/ )
 	{
-            # target = NUM: number of grids
-	    if( "$arg{target}" eq "NUM" ){ print $desc{${arg{key}}}->{NUM} . "\n"; exit; }
-
-	    # target = TYPE: level type (LINEAR or LEVELS)
-	    if( "$arg{target}" eq "TYPE" ){ print $desc{${arg{key}}}->{TYPE} . "\n"; exit; }
-
-	    # target = STEP: increment of levels
+            # target = "NUM": number of grids
+	    if( "$arg{target}" eq "NUM" )
+	    {
+		if( defined( $desc{${arg{key}}} ) )
+		{
+		    if( defined( $desc{${arg{key}}}->{NUM} ) )
+		    { print $desc{${arg{key}}}->{NUM} . "\n"; exit; }
+		}
+		print "1\n";
+		exit;
+	    }
+	    #
+	    # target = "TYPE": level type (LINEAR or LEVELS)
+	    elsif( "$arg{target}" eq "TYPE" )
+	    {
+		if( defined ( $desc{${arg{key}}} ) )
+		{
+		    if( defined ( $desc{${arg{key}}}->{TYPE} ) )
+		    {
+			print $desc{${arg{key}}}->{TYPE} . "\n";
+			exit;
+		    }
+		}
+		exit;
+	    }
+	    #
+	    # target = "INC": increment of levels
 	    #                if inhomogeneoug grid, return NONE
 	    #   unit = SEC, MN, HR, DY : output time increment in specified unit
 	    #                            (only for key=TDEF)
-	    if( "$arg{target}" eq "STEP" )
+	    elsif( "$arg{target}" eq "INC" )
 	    {
 		if( defined( $desc{${arg{key}}}->{LINEAR} ) )
 		{
 		    my $incre = $desc{${arg{key}}}->{LINEAR}->[1];
-
+		    #
+		    # change unit of $incre if necessary 
 		    if( "$arg{key}" eq "TDEF" )
 		    {
-			my $f_tunit = 1;
-			
 			if( $arg{unit} =~ /^(SEC|MN|HR|DY)$/ )
 			{
-			    
-			    $f_tunit = $FAC_TUNIT{$1};
+			    my $f_tunit = $FAC_TUNIT{$1};
 			    if( $incre =~ /^(\d+)(SEC|MN|HR|DY)$/i )
 			    {
 				$f_tunit = $FAC_TUNIT{uc($2)} / $f_tunit;
@@ -206,12 +239,12 @@ sub main()
 		    print $incre . "\n";
 		    exit;
 		}
-		print "NONE";
+		print "NONE\n";
 		exit;
 	    }
-
+	    #
 	    # target = ALL-LEVELS or ALL : all levels
-	    if( "$arg{target}" eq "ALL-LEVELS" || "$arg{target}" eq "ALL" )
+	    elsif( $arg{target} =~ /^(ALL-LEVELS|ALL)$/ )
 	    {
 		for( $i=1; $i<=$desc{${arg{key}}}->{NUM}; $i++ )
 		{
@@ -220,18 +253,20 @@ sub main()
 		print "\n";
 		exit;
 	    }
-
+	    #
 	    # target = n (>=1)    : specified levels
-	    if( $arg{target} =~ /^(\d+$)/ )
+	    elsif( $arg{target} =~ /^(\d+$)/ )
 	    {
 		print &levels( \%desc, $arg{key}, $1 ) . "\n";
 		exit
 	    }
-	    
+	    #
 	    #   target = INDEX      : index of level by level value
 	    #                         (use --value to specify)
-	    if( "$arg{target}" eq "INDEX" && $arg{value} =~ /^-*\d+(\.\d*)*$/ )
+	    elsif( "$arg{target}" eq "INDEX"  )
 	    {
+		if( $arg{value} !~ /^-*\d+(\.\d*)*$/ )
+		{ print STDERR "error: value is not specified.\n" ; exit 1;}
 		if( "$arg{key}" eq "TDEF" || "$arg{key}" eq "EDEF" )
 		{ print STDERR "error: key=$arg{key} with --target INDEX is not supported\n"; exit 1; }
 		my $dif_min = 1e+33;
@@ -248,20 +283,53 @@ sub main()
 		print $idx . "\n";
 		exit;
 	    }
+	    else
+	    {
+		print STDERR "syntax error for key=$arg{key}\n";
+		exit 1;
+	    }
 	}
 	
+        #
+        #----- key = "DIMS"
+        #
+	elsif( "$arg{key}" eq "DIMS" )
+	{
+            # target = "NUM": number of grids
+	    if( "$arg{target}" eq "NUM" )
+	    {
+		if(    defined( $desc{XDEF} ) && defined( $desc{YDEF} ) 
+		    && defined( $desc{ZDEF} ) && defined( $desc{TDEF} ) )
+		{
+		    if(    defined( $desc{XDEF}->{NUM} ) && defined( $desc{YDEF}->{NUM} ) 
+			&& defined( $desc{ZDEF}->{NUM} ) && defined( $desc{TDEF}->{NUM} ) )
+		    {
+			print $desc{XDEF}->{NUM} . " " 
+			    . $desc{YDEF}->{NUM} . " " 
+			    . $desc{ZDEF}->{NUM} . " " 
+			    . $desc{TDEF}->{NUM} . "\n";
+			exit;
+		    }
+		}
+		print "1\n";
+		exit;
+	    }
+	    else{ print STDERR "syntax error for key=$arg{key}\n"; exit 1; }
+	}
+
 	#
         #----- key = VARS
 	#
-	if( "$arg{key}" eq "VARS" )
+	elsif( "$arg{key}" eq "VARS" )
 	{
-	    # target = NUM
+	    # target = "NUM"
 	    if( "$arg{target}" eq "NUM" )
 	    {
 		print $desc{VARS}->{NUM} . "\n";
 		exit;
 	    }
-
+	    #
+	    # target = "ALL"
 	    elsif( "$arg{target}" eq "ALL" )
 	    {
 		for( my $i=0; $i<=$desc{VARS}->{NUM}-1; $i++ )
@@ -269,15 +337,16 @@ sub main()
 		    print $desc{VARS}->{LIST}->[$i] . " ";
 		}
 		print "\n";
-		exit
+		exit;
 	    }
-
-	    # TODO: from here...
-
-
 	}
 
-
+	#
+	else
+	{
+	    print STDERR "syntax error; key=$arg{key} is not supported.\n";
+	    exit 1;
+	}
 
     }
 
@@ -290,13 +359,24 @@ sub main()
     #
     else
     {
-	print "dump as control file is\n";
-	print "under construction\n";
+#	print "dump as control file is\n";
+#	print "under construction\n";
 	
-	print "\n";
+#	print "\n";
+	&dump_ctl( \%desc, "DSET" );
+	&dump_ctl( \%desc, "TITLE" );
+	&dump_ctl( \%desc, "CHSUB" );
 	&dump_ctl( \%desc, "OPTIONS" );
-	print "\n";
-	exit 1;
+	&dump_ctl( \%desc, "UNDEF" );
+	&dump_ctl( \%desc, "XDEF" );
+	&dump_ctl( \%desc, "YDEF" );
+	&dump_ctl( \%desc, "ZDEF" );
+	&dump_ctl( \%desc, "TDEF" );
+	&dump_ctl( \%desc, "VARS" );
+	exit;
+
+#	print "\n";
+#	exit 1;
     }
 
     return;
@@ -315,20 +395,112 @@ sub dump_ctl()
     my $desc = shift;
     my $key  = shift;
 
-    if( "$key" eq "OPTIONS" )
+    if( ! defined( $$desc{$key} ) && "$key" ne "DIMS" ){ return -1; }
+
+    #
+    # general: $key + value
+    #
+    if( $key =~ /^(DSET|TITLE|UNDEF)$/ )
+    {
+	print $key . "  " . $$desc{$key} . "\n";
+	return 0;
+    }
+    #
+    # specific
+    #
+    elsif( "$key" eq  "CHSUB" )
+    {
+	for( my $i=0; $i<$$desc{CHSUB}->{NUM}; $i++ )
+	{
+	    print $key 
+		. "  " . $$desc{CHSUB}->{START}->[$i] 
+		. "  " . $$desc{CHSUB}->{END}->[$i] 
+		. "  " . $$desc{CHSUB}->{STR}->[$i] 
+		. "\n";
+	}
+	return 0;
+    }
+    #
+    elsif( "$key" eq "OPTIONS" )
     {
 	print $key;
-	while ( my ( $key, $val ) = each %{$$desc{OPTIONS}} )
+	while ( my ( $key2, $val ) = each %{$$desc{OPTIONS}} )
 	{
-	    if( $val == 1 ){ print " " . $key; }
+	    if( $val == 1 ){ print "  " . $key2; }
 	}
 	print "\n";
+	return 0;
+    }
+    #
+    elsif( $key =~ /^(XDEF|YDEF|ZDEF|TDEF)$/ )
+    {
+	return &dump_ctl_dims( $desc, $key );
+    }
+    #
+    elsif( "$key" eq "DIMS" )
+    {
+	my $ret = 0;
+	$ret += &dump_ctl_dims( $desc, "XDEF" );
+	$ret += &dump_ctl_dims( $desc, "YDEF" );
+	$ret += &dump_ctl_dims( $desc, "ZDEF" );
+	$ret += &dump_ctl_dims( $desc, "TDEF" );
+	return $ret;
+    }
+    #
+    elsif( "$key" eq "VARS" )
+    {
+	print "VARS  " . $$desc{VARS}->{NUM} . "\n";
+	for( my $i=0; $i<$$desc{VARS}->{NUM}; $i++ )
+	{
+	    my $var = $$desc{VARS}->{LIST}->[$i];
+	    print $var . "  " 
+		. sprintf( "%5s", $$desc{VARS}->{VAR}->{$var}->{ZNUM} ). "  "
+	        . $$desc{VARS}->{VAR}->{$var}->{ATTR} . "  "
+	        . $$desc{VARS}->{VAR}->{$var}->{DESC} . "\n";
+	}
+	print "ENDVARS\n";
+	return 0;
     }
 
-
-
+    else
+    {
+	print STDERR "error: key=$key is not supported in dump_ctl()\n";
+	return -1;
+    }
 }
 
+
+sub dump_ctl_dims
+{
+    my $desc = shift;
+    my $key  = shift;
+
+    if( ! defined( $$desc{$key} ) ){ return -1; }
+
+    print $key . "  " 
+	. sprintf( "%6s", $$desc{$key}->{NUM} ) 
+	. "  " . $$desc{$key}->{TYPE};
+    if( "$$desc{$key}->{TYPE}" eq "LINEAR" )
+    {
+	print "  " . sprintf( "%14s", $$desc{$key}->{LINEAR}->[0] )
+	    . "  " . sprintf( "%14s", $$desc{$key}->{LINEAR}->[1] );
+    }
+    else
+    {
+	print "\n";
+	for( my $i=0; $i<$$desc{$key}->{NUM}; $i++ )
+	{
+	    if( $i > 0 )
+	    {
+		if( $i % 5 == 0 ){ print "\n"; }
+		else{ print "  "; }
+	    }
+	    print sprintf( "%14s", $$desc{$key}->{LEVELS}->[$i] );
+	}
+    }
+    print "\n";
+    return 0;
+}
 
 #
 ############################################################
@@ -495,12 +667,6 @@ sub ana_ctl()
 		$ref = [ @tmp[2..$#tmp] ];
 		$$desc{$KEYWORD[$j]}->{LEVELS} = $ref;
 
-
-#		if( "$KEYWORD[$j]" eq "ZDEF" )
-#		{
-#		    print $tmp[0];
-#		    exit ;
-#		}
 		# calculate start and increment if possible
 		&levels2linear( $desc, $KEYWORD[$j] );
 
@@ -749,6 +915,8 @@ sub levels2linear()
     my $key  = shift;
 
     # calculate start and increment if possible
+    if( $$desc{$key}->{NUM} < 2 ){ return; }
+    #
     my $incre = $$desc{$key}->{LEVELS}->[1] - $$desc{$key}->{LEVELS}->[0];
     my $ref = []; $$desc{$key}->{LINEAR} = $ref;
     $$desc{$key}->{LINEAR}->[0] = $$desc{$key}->{LEVELS}->[0];
@@ -756,13 +924,13 @@ sub levels2linear()
     for( my $i=1; $i<=$$desc{$key}->{NUM}-2; $i++ )
     {
 	if( $incre != $$desc{$key}->{LEVELS}->[$i+1] - $$desc{$key}->{LEVELS}->[$i] )
-	{ undef(@{$$desc{$key}->{LINEAR}}); last; }
+	{ undef( @{$$desc{$key}->{LINEAR}} ); last; }
     }
 }
 
 sub linear2levels()
 {
-    my $key = shift;
+    my $key   = shift;
     my $start = shift;
     my $incre = shift;
     my $index = shift;
@@ -825,29 +993,57 @@ Name:
 
 Usage:
   grads_ctl2.pl
-    [--ctl ctl-filename | --nc netcdf-filename]
-    [--key keyword [--target target] [-unit unit] [--var var] [--value value] ]
+    [ [--ctl] ctl-filename | [--nc] netcdf-filename]
+    [ [--key] keyword [ [--target] target] [--unit unit] [--var var] [--value value] ]
     [--ncdump fullpath-to-ncdump]
 
 Options:
-  --key "OPTIONS"
-    Output all the OPTIONS in control-file style.
+  --key ( "DSET" | "TITLE" | "CHSUB" | "OPTIONS" | "UNDEF" | "XDEF" | "YDEF" | "ZDEF" | "TDEF" | "DIMS")
+    Output all in control-file style. "DIMS" for all the dimensions.
+
+  --key ( "DSET" | "TITLE" | "UNDEF" ) --target "value"
+    Output single value.
 
   --key "OPTIONS" --target target
     target = ( "TEMPLATE" | "BIG_ENDIAN" | "XREV" ... )
       Output 1 or 0 if specified or not-specified.
 
+  --key ( "XDEF" | "YDEF" | "ZDEF" | "TDEF" )  --target target
+    target = "NUM"
+      Number of levels.
+    target = "TYPE"
+      Type of levels. "LINEAR" or "LEVELS". Output none if not specified.
+    target = "INC" [--unit unit]
+      Increment. 
+    target = ( "ALL" | "ALL-LEVELS" )
+      Output all the levels.
+    target = index
+      index-th level value.
 
-"UNDEF"
-    keyword = XYZDEF
-    keyword = var-name
+  --key ( "XDEF" | "YDEF" | "ZDEF" )  --target "index" --value value
+    Index which is closest to the value.
+
+  --key "TDEF" --target "INC" --unit ( "SEC" | "MN" | "HR" | "DY" )
+    Increment with specified time unit.
+
+  --key ( "DIMS" )  --target "NUM"
+    Numbers of levels for all the dimensions.
+
+  --key "VARS" --target target
+    target = "NUM"
+      Number of variables.
+    target = "ALL"
+      All the name of variables.
+
+  Below keywords are not supported now:
+    keyword = "EDEF", "DTYPE", "INDEX", "STNMAP", "UNPACK", "FILEHEADER", "XYHEADER", "THEADER", "HEADERBYTES", "TRAILERBYTES", "XVAR", "YVAR", "ZVAR", "STID", "TVAR", "TOFFVAR", "PDEF", "VECTORPAIRS"
 
 Examples:
-  grads_ctl2.pl --ctl abc.ctl --key XDEF --target NUM
+  grads_ctl2.pl abc.ctl xdef num
     Display number of levels in X coordinate.
 
 EOF
 #    [--force-xdef?]
-
+    return 0;
 }
 exit 1;
