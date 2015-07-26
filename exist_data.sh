@@ -61,9 +61,11 @@ rm exist_data_${TEMP}.gs exist_data_${TEMP}.txt
 
 if [ "${TYPE}" = "open" ] ; then
     EXT="grd"
-    XDEF=$( grads_ctl.pl ctl="${CTL}" key="XDEF" target="NUM" )
-    YDEF=$( grads_ctl.pl ctl="${CTL}" key="YDEF" target="NUM" )
-    ZDEF=$( grads_ctl.pl ctl="${CTL}" key="ZDEF" target="NUM" )
+#    XDEF=$( grads_ctl.pl ctl="${CTL}" key="XDEF" target="NUM" )
+#    YDEF=$( grads_ctl.pl ctl="${CTL}" key="YDEF" target="NUM" )
+#    ZDEF=$( grads_ctl.pl ctl="${CTL}" key="ZDEF" target="NUM" )
+    DIMS=( $( grads_ctl.pl ${CTL} DIMS NUM ) ) || exit 1
+    XDEF=${DIMS[0]} ; YDEF=${DIMS[1]} ; ZDEF=${DIMS[2]} ; TDEF=${DIMS[3]} ; EDEF=${DIMS[4]}
     VDEF=$( grep -i "^VARS" ${CTL} | awk '{ print $2 }' )
 
 elif [ "${TYPE}" = "xdfopen" ] ; then
