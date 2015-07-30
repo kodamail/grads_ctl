@@ -65,7 +65,7 @@ while [ "$1" != "" ] ; do
     shift
 done
 
-if [ ${VERBOSE} -gt 0 ] ; then
+if [ ${VERBOSE} -gt 1 ] ; then
     echo "CTL: ${CTL}"
     echo "VAR: ${VAR}"
     echo "OUTPUT: ${OUTPUT}"
@@ -95,6 +95,12 @@ if [ "${YMD_MIN}" != "" -a "${YMD_MAX}" != "" ] ; then
 #    GRADS_MIN=$( date --date "${YMD_MIN}" +00z%d%b%Y )
 #    GRADS_MAXPP=$( date --date "${YMD_MAX} 1 days" +00z%d%b%Y )
 fi
+
+
+if [ ${VERBOSE} -eq 1 ] ; then
+    echo "get_data.sh: TMIN=${TMIN}, TMAX=${TMAX}, TINT=${TINT}, CTL=${CTL}"
+fi
+
 
 GS=temp_get_data_$$.gs
 
@@ -129,7 +135,7 @@ endwhile
 'disable fwrite'
 'quit'
 EOF
-if [ ${VERBOSE} -gt 0 ] ; then
+if [ ${VERBOSE} -gt 1 ] ; then
     cat ${GS}
     grads -blc ${GS}
 else
