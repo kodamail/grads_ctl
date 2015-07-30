@@ -3,6 +3,8 @@
 # just type ./get_data.sh for usage
 #
 export LANG=en
+export PATH=$( pwd ):${PATH}
+
 
 CTL=""
 VAR=""
@@ -20,6 +22,7 @@ usage:
  get_data.sh ctl-filename variable-name output-filename
              -t tmin:tmax[:tint]
              -ymd ymdmin:ymdmax[:tint]
+             -ymd ("["|"(")ymdmin:ymdmax[:tint](")"|"]")
 EOF
 #               -gdate gdatemin:gdatemax[:tint]
     exit
@@ -75,8 +78,22 @@ if [ ${VERBOSE} -gt 0 ] ; then
 fi
 
 if [ "${YMD_MIN}" != "" -a "${YMD_MAX}" != "" ] ; then
-    GRADS_MIN=$( date --date "${YMD_MIN}" +00z%d%b%Y )
-    GRADS_MAXPP=$( date --date "${YMD_MAX} 1 days" +00z%d%b%Y )
+    if [ "${YMD_MIN:0:1}" = "(" ] ; then
+	TMIN=$( grads_time2t.sh ${CTL} ${YMD_MIN:1:8} -gt ) || exit 
+    elif [ "${YMD_MIN:0:1}" = "[" ] ; then
+	TMIN=$( grads_time2t.sh ${CTL} ${YMD_MIN:1:8} -ge ) || exit 1
+    else
+	TMIN=$( grads_time2t.sh ${CTL} ${YMD_MIN:0:8} -ge ) || exit 1
+    fi
+    
+    TMP=${YMD_MAX:${#YMD_MAX}-1:1}
+    if [ "${TMP}" = ")" ] ; then
+	TMAX=$( grads_time2t.sh ${CTL} ${YMD_MAX:0:8} -lt ) || exit 
+    else
+	TMAX=$( grads_time2t.sh ${CTL} ${YMD_MAX:0:8} -le ) || exit 1
+    fi
+#    GRADS_MIN=$( date --date "${YMD_MIN}" +00z%d%b%Y )
+#    GRADS_MAXPP=$( date --date "${YMD_MAX} 1 days" +00z%d%b%Y )
 fi
 
 GS=temp_get_data_$$.gs
@@ -94,21 +111,8 @@ zdef = qctlinfo( 1, "zdef", 1 )
 say xdef
 'set x 1 'xdef
 'set y 1 'ydef
-EOF
-
-if [ "${GRADS_MIN}" != "" -a "${GRADS_MAXPP}" != "" ] ; then
-    cat >> ${GS} <<EOF
-tmin = time2t( '${GRADS_MIN}' )
-tmax = time2t( '${GRADS_MAXPP}' ) - 1
-EOF
-else
-    cat >> ${GS} <<EOF
 tmin = ${TMIN}
 tmax = ${TMAX}
-EOF
-fi
-
-cat >> ${GS} <<EOF
 t = tmin
 while( t <= tmax )
   say 't = ' % t
