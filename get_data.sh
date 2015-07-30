@@ -79,7 +79,7 @@ fi
 
 if [ "${YMD_MIN}" != "" -a "${YMD_MAX}" != "" ] ; then
     if [ "${YMD_MIN:0:1}" = "(" ] ; then
-	TMIN=$( grads_time2t.sh ${CTL} ${YMD_MIN:1:8} -gt ) || exit 
+	TMIN=$( grads_time2t.sh ${CTL} ${YMD_MIN:1:8} -gt ) || exit 1
     elif [ "${YMD_MIN:0:1}" = "[" ] ; then
 	TMIN=$( grads_time2t.sh ${CTL} ${YMD_MIN:1:8} -ge ) || exit 1
     else
@@ -88,7 +88,7 @@ if [ "${YMD_MIN}" != "" -a "${YMD_MAX}" != "" ] ; then
     
     TMP=${YMD_MAX:${#YMD_MAX}-1:1}
     if [ "${TMP}" = ")" ] ; then
-	TMAX=$( grads_time2t.sh ${CTL} ${YMD_MAX:0:8} -lt ) || exit 
+	TMAX=$( grads_time2t.sh ${CTL} ${YMD_MAX:0:8} -lt ) || exit 1
     else
 	TMAX=$( grads_time2t.sh ${CTL} ${YMD_MAX:0:8} -le ) || exit 1
     fi
