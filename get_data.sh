@@ -11,6 +11,8 @@ VAR=""
 OUTPUT=""
 TMIN=""
 TMAX=""
+ZMIN=1
+ZMAX=""
 TINT=1
 YMD_MIN=""  # in YYYYMMDD
 YMD_MAX=""  # in YYYYMMDD
@@ -20,9 +22,10 @@ if [ "$1" = "" ] ; then
     cat <<EOF
 usage:
  get_data.sh ctl-filename variable-name output-filename
-             -t tmin:tmax[:tint]
-             -ymd ymdmin:ymdmax[:tint]
-             -ymd ("["|"(")ymdmin:ymdmax[:tint](")"|"]")
+             -t tmin[:tmax[:tint]]
+             [ -ymd ymdmin:ymdmax[:tint] ]
+             [ -ymd ("["|"(")ymdmin:ymdmax[:tint](")"|"]") ]
+             -z zmin[:zmax]
 EOF
 #               -gdate gdatemin:gdatemax[:tint]
     exit
@@ -36,7 +39,14 @@ while [ "$1" != "" ] ; do
 	TMIN=$( echo ${TMP} | cut -d : -f 1 )
 	TMAX=$( echo ${TMP} | cut -d : -f 2 )
 	TINT=$( echo ${TMP} | cut -d : -f 3 )
+	[ "${TMAX}" = "" ] && TMAX=${TMIN}
 	[ "${TINT}" = "" ] && TINT=1
+
+    elif [ "$1" = "-z" ] ; then
+	shift; TMP=$1
+	ZMIN=$( echo ${TMP} | cut -d : -f 1 )
+	ZMAX=$( echo ${TMP} | cut -d : -f 2 )
+	[ "${ZMAX}" = "" ] && ZMAX=${ZMIN}
 
     elif [ "$1" = "-ymd" ] ; then
 	shift; TMP=$1
@@ -111,9 +121,13 @@ rc = gsfallow( 'on' )
 'set gxout fwrite'
 'set fwrite -be ${OUTPUT}'
 'set undef -0.99900E+35'
-xdef = qctlinfo( 1, "xdef", 1 )
-ydef = qctlinfo( 1, "ydef", 1 )
-zdef = qctlinfo( 1, "zdef", 1 )
+xdef = qctlinfo( 1, 'xdef', 1 )
+ydef = qctlinfo( 1, 'ydef', 1 )
+if( '${ZMAX}' = '' )
+  zmax = qctlinfo( 1, 'zdef', 1 )
+else
+  zmax = '${ZMAX}'
+endif
 say xdef
 'set x 1 'xdef
 'set y 1 'ydef
@@ -123,8 +137,8 @@ t = tmin
 while( t <= tmax )
   say 't = ' % t
   'set t 't
-  z = 1
-  while( z <= zdef )
+  z = ${ZMIN}
+  while( z <= zmax )
 *    say '  z = ' % z
     'set z 'z
     'd ${VAR}'
@@ -137,9 +151,9 @@ endwhile
 EOF
 if [ ${VERBOSE} -gt 1 ] ; then
     cat ${GS}
-    grads -blc ${GS}
+    grads -blc ${GS} || exit e
 else
-    grads -blc ${GS} > /dev/null
+    grads -blc ${GS} > /dev/null  || exit 1
 fi
 
 rm ${GS}
