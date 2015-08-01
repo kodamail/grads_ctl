@@ -14,7 +14,7 @@ if [ "${TIME}" = "" ] ; then
     exit 1
 fi
 
-# TIME is YYYYMMDD?
+# TIME is YYYYMMDD? -> assumed to be YYYYMMDD 00:00:00
 FLAG=$( echo "${TIME}" | grep -e "^[0-9]\{8\}" )
 if [ "${FLAG}" != "" ] ; then
     TIME=$( date --utc --date "${TIME}" +00z%d%b%Y )
