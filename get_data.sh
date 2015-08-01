@@ -11,21 +11,21 @@ VAR=""
 OUTPUT=""
 TMIN=""
 TMAX=""
-ZMIN=1
-ZMAX=""
 TINT=1
 YMD_MIN=""  # in YYYYMMDD
 YMD_MAX=""  # in YYYYMMDD
+ZMIN=1
+ZMAX=""
 VERBOSE=0
 
 if [ "$1" = "" ] ; then
     cat <<EOF
 usage:
  get_data.sh ctl-filename variable-name output-filename
-             -t tmin[:tmax[:tint]]
+             [ -t tmin[:tmax[:tint]] ]
              [ -ymd ymdmin:ymdmax[:tint] ]
              [ -ymd ("["|"(")ymdmin:ymdmax[:tint](")"|"]") ]
-             -z zmin[:zmax]
+             [ -z zmin[:zmax] ]
 EOF
 #               -gdate gdatemin:gdatemax[:tint]
     exit
@@ -68,7 +68,7 @@ while [ "$1" != "" ] ; do
 	OUTPUT=$1
 
     else
-	echo "error in get_data.sh: $1 is not supported."
+	echo "error in $0: $1 is not supported."
 	exit 1
     fi
 
@@ -108,7 +108,7 @@ fi
 
 
 if [ ${VERBOSE} -eq 1 ] ; then
-    echo "get_data.sh: TMIN=${TMIN}, TMAX=${TMAX}, TINT=${TINT}, CTL=${CTL}"
+    echo "$0: TMIN=${TMIN}, TMAX=${TMAX}, TINT=${TINT}, CTL=${CTL}"
 fi
 
 
