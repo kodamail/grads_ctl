@@ -1,224 +1,118 @@
 #!/bin/sh
 #
-# check existence of files
+# check existence of files (do not check file size)
 #
 # If succeed, output "ok" and list of filename
 #
+export LANG=en
+export PATH=$( pwd ):${PATH}
 
-if [ "$3" = "" ] ; then
-    cat <<EOF # control file name
+CTL=""   # control file name
+TMIN=""
+TMAX=""
+YMD_MIN=""  # in YYYYMMDD -> YYYYMMDD 00:00:00
+YMD_MAX=""  # in YYYYMMDD -> YYYYMMDD 00:00:00
+VERBOSE=0
+LIST=0
+
+if [ "$1" = "" ] ; then
+    cat <<EOF
 usage:
- exist_data.sh ctl-filename time-start time-end [time-flag]
+ exist_data.sh ctl-filename 
+               -t tmin[:tmax]
+               [ -ymd ymdmin:ymdmax ]
+               [ -ymd ("["|"(")ymdmin:ymdmax(")"|"]") ]
+               [-list]
 EOF
     exit
 fi
 
-# control file name
-CTL=$1
+while [ "$1" != "" ] ; do
+    if [ "$1" = "-t" ] ; then
+        shift; TMP=$1
+        TMIN=$( echo ${TMP} | cut -d : -f 1 )
+        TMAX=$( echo ${TMP} | cut -d : -f 2 )
+        [ "${TMAX}" = "" ] && TMAX=${TMIN}
 
-# start and end time (e.g. 00z01jun2004)
-TIME_START=$2
-TIME_END=$3
+    elif [ "$1" = "-ymd" ] ; then
+        shift; TMP=$1
+        YMD_MIN=$( echo ${TMP} | cut -d : -f 1 )
+        YMD_MAX=$( echo ${TMP} | cut -d : -f 2 )
 
-# flag to specify exact time range (optional)
-#   = ""     : [TIME_START:TIME_END]
-#   = "MM"   : (TIME_START:TIME_END]
-#   = "PP"   : [TIME_START:TIME_END)
-#   = "MMPP":  (TIME_START:TIME_END)
-TIME_FLAG=$4
+    elif [ "$1" = "-v" ] ; then
+        let VERBOSE=VERBOSE+1
+
+    elif [ "$1" = "-list" ] ; then
+        LIST=1
+
+    elif [ "${CTL}" = "" ] ; then
+        CTL=$1
+
+    else
+        echo "error in $0: $1 is not supported." >&2
+        exit 1
+    fi
+
+    shift
+done
 
 #-------------------------------------------------------#
-export PATH=$( pwd ):${PATH}
-export LANG=en
 
 if [ ! -f "${CTL}" ] ; then
-    echo "error in exist_data.sh: CTL=${CTL} does not exist."
+    echo "error in $0: CTL=${CTL} does not exist." >&2
     exit 1
 fi
 
-TEMP=$( date +%s )
-cat > exist_data_${TEMP}.gs <<EOF
-'reinit'
-rc = gsfallow( 'on' )
-'xopen -t ${CTL}'
-type = sublin( result, 1 )
-type = subwrd( type, 2 )
-tmin = time2t( '${TIME_START}' )
-tmax = time2t( '${TIME_END}' )
-if( '${TIME_FLAG}' = 'PP' | '${TIME_FLAG}' = 'MMPP' )
-  tmax = tmax - 1
-endif
-if( '${TIME_FLAG}' = 'MM' | '${TIME_FLAG}' = 'MMPP' )
-  tmin = tmin + 1
-endif
-ret = write( "exist_data_${TEMP}.txt", tmin )
-ret = write( "exist_data_${TEMP}.txt", tmax )
-ret = write( "exist_data_${TEMP}.txt", type )
-'quit'
-EOF
-#cat exist_data_${TEMP}.gs >&2
-#grads -blc exist_data_${TEMP}.gs #> /dev/null
-TYPE=$( grads -blc exist_data_${TEMP}.gs | grep ^using | awk '{ print $2 }' )
-TMIN=$( sed exist_data_${TEMP}.txt -e "1,1p" -e d )
-TMAX=$( sed exist_data_${TEMP}.txt -e "2,2p" -e d )
-#TYPE=$( sed exist_data_${TEMP}.txt -e "3,3p" -e d )
-rm exist_data_${TEMP}.gs exist_data_${TEMP}.txt
-#echo "${TYPE}"
-#echo "${TMIN} ${TMAX}"
-#echo "ok"
-#exit
+if [ "${YMD_MIN}" != "" -a "${YMD_MAX}" != "" ] ; then
+    if [ "${YMD_MIN:0:1}" = "(" ] ; then
+        TMIN=$( grads_time2t.sh ${CTL} ${YMD_MIN:1:8} -gt ) || exit 1
+    elif [ "${YMD_MIN:0:1}" = "[" ] ; then
+        TMIN=$( grads_time2t.sh ${CTL} ${YMD_MIN:1:8} -ge ) || exit 1
+    else
+        TMIN=$( grads_time2t.sh ${CTL} ${YMD_MIN:0:8} -ge ) || exit 1
+    fi
 
+    TMP=${YMD_MAX:${#YMD_MAX}-1:1}
+    if [ "${TMP}" = ")" ] ; then
+        TMAX=$( grads_time2t.sh ${CTL} ${YMD_MAX:0:8} -lt ) || exit 1
+    else
+        TMAX=$( grads_time2t.sh ${CTL} ${YMD_MAX:0:8} -le ) || exit 1
+    fi
+fi
 
-if [ "${TYPE}" = "open" ] ; then
-    EXT="grd"
-#    XDEF=$( grads_ctl.pl ctl="${CTL}" key="XDEF" target="NUM" )
-#    YDEF=$( grads_ctl.pl ctl="${CTL}" key="YDEF" target="NUM" )
-#    ZDEF=$( grads_ctl.pl ctl="${CTL}" key="ZDEF" target="NUM" )
-    DIMS=( $( grads_ctl.pl ${CTL} DIMS NUM ) ) || exit 1
-    XDEF=${DIMS[0]} ; YDEF=${DIMS[1]} ; ZDEF=${DIMS[2]} ; TDEF=${DIMS[3]} ; EDEF=${DIMS[4]}
-    VDEF=$( grep -i "^VARS" ${CTL} | awk '{ print $2 }' )
+if [ ${VERBOSE} -eq 1 ] ; then
+    echo "$0: TMIN=${TMIN}, TMAX=${TMAX}, CTL=${CTL}" >&2
+fi
 
-elif [ "${TYPE}" = "xdfopen" ] ; then
-    EXT="nc"
-
-else
-    echo "error: TYPE=${TYPE} is not supported." >&2
+if [ ${TMIN} -gt ${TMAX} ] ; then
+    echo "error in $0: tmin > tmax" >&2
     exit 1
 fi
-
-
-DSET=$( grep -i "^DSET" ${CTL} )
-TEMP=$( echo ${DSET} | grep "%ch" )
-
-# if DSET include %ch ...
-if [ "${TEMP}" != "" ] ; then
-    #
-    # create CHSUB_LIST which is necessary
-    #
-    LIST_TMIN=( )
-    LIST_TMAX=( )
-    LIST_CHSUB=( )
-    CHSUB_TMIN=(  $( grep -i "^CHSUB" ${CTL} | awk '{ print $2 }' ) )
-    CHSUB_TMAX=(  $( grep -i "^CHSUB" ${CTL} | awk '{ print $3 }' ) )
-    CHSUB_CHSUB=( $( grep -i "^CHSUB" ${CTL} | awk '{ print $4 }' ) )
-    for(( f=0; ${f}<${#CHSUB_CHSUB[@]}; f=${f}+1 )) ; do
-	HIT=0
-	
-	if [   ${CHSUB_TMIN[$f]} -le ${TMIN} \
-	    -a           ${TMIN} -le ${CHSUB_TMAX[$f]} ] ; then
-	    HIT=1
-	elif [ ${CHSUB_TMIN[$f]} -le ${TMAX} \
-	    -a         ${TMAX} -le ${CHSUB_TMAX[$f]} ] ; then
-	    HIT=1
-	elif [ ${TMIN} -le ${CHSUB_TMIN[$f]} \
-	    -a ${TMAX} -ge ${CHSUB_TMAX[$f]} ] ; then
-	    HIT=1
-	fi
-	
-	if [ ${HIT} -eq 1 ] ; then
-	    LIST_TMIN=(  ${LIST_TMIN[@]}  ${CHSUB_TMIN[$f]} )
-	    LIST_TMAX=(  ${LIST_TMAX[@]}  ${CHSUB_TMAX[$f]} )
-	    LIST_CHSUB=( ${LIST_CHSUB[@]} ${CHSUB_CHSUB[$f]} )
-	fi
-    done
-    
-    STATUS="ok"
-        
-    FILE_LIST=()
-    for(( f=0; ${f}<${#LIST_CHSUB[@]}; f=${f}+1 )) ; do
-	DIR=${CTL%${CTL##*/}}
-	FILE=$( echo ${DSET} | sed \
-	    -e "s|%ch|${LIST_CHSUB[$f]}|" \
-	    -e "s|DSET  *^|${DIR}|" \
-	    -e "s|DSET  *||" \
-	    )
-	FILE_LIST=( ${FILE_LIST[@]} ${FILE} )
-    done
-
-    for(( f=0; ${f}<${#LIST_CHSUB[@]}; f=${f}+1 )) ; do
-
-	# check file existence 
-	if [ ! -f ${FILE_LIST[$f]} ] ; then
-	    STATUS="fail_file_exist"
-	    break
-	fi
-
-	[ "${EXT}" = "nc" ] && continue
-
-        # file size check
-	let TINT=LIST_TMAX[$f]-LIST_TMIN[$f]+1
-	SIZE_OUT=$( ls -lL ${FILE_LIST[$f]} | awk '{ print $5 }' )
-	SIZE_OUT_EXACT=$( echo 4*${XDEF}*${YDEF}*${ZDEF}*${VDEF}*${TINT} | bc )
-	if [ ${SIZE_OUT} -ne ${SIZE_OUT_EXACT} ] ; then
-	    STATUS="fail_file_size"
-	    break
-	fi
-    done
-    
-    # display
-    echo ${STATUS}
-    for FILE in ${FILE_LIST[@]} ; do
-	echo ${FILE}
-    done
-
-else
-
-    DIR=${CTL%${CTL##*/}}
-#    DSET=$( echo ${DSET} | sed -e "s/^DSET \+^\?//i" )
-    TMP_TIME_LIST=( dummy $( grads_ctl.pl ${CTL} TDEF ALL ) ) || exit 1
-    TIME_LIST=( )
-    for(( i=${TMIN}; $i<=${TMAX}; i=$i+1 )) ; do
-	TIME_LIST[${#TIME_LIST[@]}]=${TMP_TIME_LIST[$i]}
-    done
-
-    FILE_LIST=( )
-    TDEF_LIST=( )
-    FILE_PREV=""
-    for TIME in ${TIME_LIST[@]} ; do
-	Y4=$( date -u --date "${TIME}" +%Y )
-	M2=$( date -u --date "${TIME}" +%m )
-	FILE=$( echo ${DSET} | sed \
-	    -e "s/%y4/${Y4}/g" \
-	    -e "s/%m2/${M2}/g" \
-	    -e "s|DSET  *^|${DIR}|" \
-	    -e "s|DSET  *||" \
-	    )
-	if [ "${FILE}" != "${FILE_PREV}" ] ; then
-	    FILE_LIST[${#FILE_LIST[@]}]=${FILE}
-	    TDEF_LIST[${#TDEF_LIST[@]}]=1
-	    FILE_PREV=${FILE}
-	else
-	    let TDEF_LIST[${#TDEF_LIST[@]}-1]++	      # todo: check
-	fi
-    done
-
-    STATUS="ok"
-    for(( f=0; ${f}<${#FILE_LIST[@]}; f=${f}+1 )) ; do
-
-	# check file existence 
-	if [ ! -f ${FILE_LIST[$f]} ] ; then
-	    STATUS="fail_file_exist"
-	    break
-	fi
-
-	[ "${EXT}" = "nc" ] && continue
-
-        # file size check
-#	let TINT=LIST_TMAX[$f]-LIST_TMIN[$f]+1
-	SIZE_OUT=$( ls -lL ${FILE_LIST[$f]} | awk '{ print $5 }' )
-	SIZE_OUT_EXACT=$( echo 4*${XDEF}*${YDEF}*${ZDEF}*${VDEF}*${TDEF_LIST[$f]} | bc )
-	if [ ${SIZE_OUT} -ne ${SIZE_OUT_EXACT} ] ; then
-	    STATUS="fail_file_size"
-	    break
-	fi
-    done
-    
-    # display
-    echo ${STATUS}
-    for FILE in ${FILE_LIST[@]} ; do
-	echo ${FILE}
-    done
-    
-#    echo "except %ch is not supported"
-#    exit 1
+TDEF=( $( grads_ctl.pl ${CTL} TDEF NUM ) ) || exit 1
+if [ ${TMIN} -lt 1 -o ${TMAX} -gt ${TDEF} ] ; then
+    echo "fail_tdef_out_of_range"
+    exit
 fi
+
+STATUS="ok"
+DSET_LIST=( $( grads_ctl.pl ${CTL} DSET "${TMIN}:${TMAX}" ) ) || exit 1
+FILE_LIST=()
+for DSET in ${DSET_LIST[@]} ; do
+    FILE=$( echo "${DSET}" | sed -e "s|^^|${CTL%/*}/|" ) || exit 1
+    FILE_LIST[${#FILE_LIST[@]}]=${FILE}
+
+    if [ ! -f ${FILE} ] ; then
+	STATUS="fail_file_exist"
+	break
+    fi
+done
+
+# display
+echo ${STATUS}
+if [ ${LIST} -eq 1 ] ; then
+    for FILE in ${FILE_LIST[@]} ; do
+    echo ${FILE}
+    done
+fi
+
+exit
