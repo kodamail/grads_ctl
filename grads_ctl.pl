@@ -175,6 +175,71 @@ sub main()
 	    exit;
 	}
 
+        elsif( "$arg{key}" eq "DSET" )
+	{
+	    if( ! defined( $desc{$arg{key}} ) ){ exit 1; }
+
+	    if( $desc{$arg{key}} !~ /(%ch|%m2|%d2)/ )
+	    {
+		print $desc{$arg{key}} . "\n";
+		exit;
+	    }
+
+	    my $min = -1;
+	    my $max = -1;
+
+	    if( "$arg{target}" eq "ALL" )
+	    {
+		$min = 1;
+		$max = $desc{TDEF}->{NUM};
+	    }
+	    elsif( $arg{target} =~ /^(\[|\()?0?([1-9][0-9]*):0?([1-9][0-9]*)(\]|\))?$/ )
+	    {
+		$min = $2; $max = $3;
+		my ( $flag_min, $flag_max ) = ( $1, $4 );
+		if( "$flag_min" eq "(" ){ $min++; }
+		if( "$flag_max" eq ")" ){ $max--; }
+	    }
+
+
+	    if( $desc{$arg{key}} =~ /%ch/i )
+	    {
+		for( my $i=0; $i<$desc{CHSUB}->{NUM}; $i++ )
+		{
+		    if(    ( $min >= $desc{CHSUB}->{START}->[$i] && $min <= $desc{CHSUB}->{END}->[$i] )
+			   || ( $max >= $desc{CHSUB}->{START}->[$i] && $max <= $desc{CHSUB}->{END}->[$i] ) 
+			   || ( $min <= $desc{CHSUB}->{START}->[$i] && $max >= $desc{CHSUB}->{END}->[$i] )  )
+		    {
+			my $tmp = $desc{$arg{key}};
+			$tmp =~ s/%ch/$desc{CHSUB}->{STR}->[$i]/g;
+			print $tmp . "\n";
+		    }
+		}
+	    }
+	    else
+	    {
+		my $prev = "";
+		for( my $i=$min; $i<=$max; $i++ )
+		{
+		    my $gtime = &levels( \%desc, "TDEF", $i );
+		    my $date = `export LANG=en ; date -u --date "$gtime" +%Y%m%d\\\ %H:%M:%S`;
+		    my $y4 = substr($date, 0, 4);
+		    my $m2 = substr($date, 4, 2);
+		    my $d2 = substr($date, 6, 2);
+		    my $tmp = $desc{$arg{key}};
+		    $tmp =~ s/%y4/$y4/ig;
+		    $tmp =~ s/%m2/$m2/ig;
+		    $tmp =~ s/%d2/$d2/ig;
+		    if( "$tmp" ne "$prev")
+		    {
+			print $tmp . "\n";
+			$prev = $tmp;
+		    }
+		}
+	    }
+	    exit;
+	}
+
         #
         #----- key = OPTIONS : true (1) or false (0)
         #   target = XREV, YREV, ZREV, etc...
@@ -358,7 +423,7 @@ sub main()
 	#
 	else
 	{
-	    print STDERR "syntax error; key=$arg{key} is not supported.\n";
+	    print STDERR "syntax error: combination of key=$arg{key} and target=$arg{target} is not supported.\n";
 	    exit 1;
 	}
 
@@ -1047,6 +1112,9 @@ Options:
     Output all in control-file style. "DIMS" for all the dimensions.
 
   --key ( "DSET" | "TITLE" | "UNDEF" ) --target "value"
+    Output single value.
+
+  --key "DSET" --target ["("|"["]tmin:tmax[")"|"]"]
     Output single value.
 
   --key "OPTIONS" --target target
