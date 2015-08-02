@@ -85,7 +85,7 @@ if [ ${VERBOSE} -eq 1 ] ; then
 fi
 
 if [ ${TMIN} -gt ${TMAX} ] ; then
-    echo "error in $0: tmin > tmax" >&2
+    echo "error in $0: tmin(=${TMIN}) > tmax(=${TMAX})" >&2
     exit 1
 fi
 TDEF=( $( grads_ctl.pl ${CTL} TDEF NUM ) ) || exit 1
