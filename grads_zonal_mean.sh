@@ -68,7 +68,7 @@ while [ "$1" != "" ] ; do
     shift
 done
 
-if [ ${VERBOSE} -gt 1 ] ; then
+if [ ${VERBOSE} -ge 1 ] ; then
     echo "CTL: ${CTL}"
     echo "VAR: ${VAR}"
     echo "OUTPUT: ${OUTPUT}"
