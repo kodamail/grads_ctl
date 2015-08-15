@@ -68,7 +68,7 @@ while [ "$1" != "" ] ; do
     shift
 done
 
-if [ ${VERBOSE} -ge 1 ] ; then
+if [ ${VERBOSE} -ge 2 ] ; then
     echo "CTL: ${CTL}"
     echo "VAR: ${VAR}"
     echo "OUTPUT: ${OUTPUT}"
@@ -151,6 +151,11 @@ endwhile
 'disable fwrite'
 'quit'
 EOF
-grads -blc ${GS} || exit 1
+if [ ${VERBOSE} -ge 1 ] ; then
+    [ ${VERBOSE} -ge 2 ] && cat ${GS}
+    grads -blc ${GS} || exit 1
+else
+    grads -blc ${GS} > /dev/null || exit 1
+fi
 
 echo "$0 normally finished."
