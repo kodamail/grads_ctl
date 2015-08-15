@@ -18,11 +18,12 @@ LIST=0
 if [ "$1" = "" ] ; then
     cat <<EOF
 usage:
- exist_data.sh ctl-filename 
-               -t tmin[:tmax]
-               [ -ymd ymdmin:ymdmax ]
-               [ -ymd ("["|"(")ymdmin:ymdmax(")"|"]") ]
-               [-list]
+ $0
+     ctl-filename 
+     -t tmin[:tmax]
+     [ -ymd ymdmin:ymdmax ]
+     [ -ymd ("["|"(")ymdmin:ymdmax(")"|"]") ]
+     [-list]
 EOF
     exit
 fi

@@ -4,8 +4,6 @@ create_temp
 TEMP_DIR=${BASH_COMMON_TEMP_DIR}
 trap "finish" 0
 
-#set -x
-
 export PATH=$( pwd ):${PATH}
 
 CTL=""
@@ -97,17 +95,7 @@ if [ "${YMD_MIN}" != "" -a "${YMD_MAX}" != "" ] ; then
     else
         TMAX=$( grads_time2t.sh ${CTL} ${YMD_MAX:0:8} -le ) || exit 1
     fi
-#    GRADS_MIN=$( date --date "${YMD_MIN}" +00z%d%b%Y )
-#    GRADS_MAXPP=$( date --date "${YMD_MAX} 1 days" +00z%d%b%Y )
 fi
-
-#VAR_GRADS=$1
-#INPUT_CTL=$2
-#OUTPUT_DATA=$3
-#T_START=$4
-#T_END=$5
-#E_START=$6   # optional
-#E_END=$7     # optional
 
 [ "${E_START}" = "" ] && E_START=1
 [ "${E_END}"   = "" ] && E_END=1
@@ -115,50 +103,7 @@ fi
 DIMS=( $( grads_ctl.pl ${CTL} DIMS NUM ) ) || exit 1 
 XDEF=${DIMS[0]} ; YDEF=${DIMS[1]} ; ZDEF=${DIMS[2]}
 
-
-# little or big endian
-#OPT_ENDIAN=""
-#FLAG_BIG_ENDIAN=`get_OPTIONS big_endian`
-#FLAG_LITTLE_ENDIAN=`get_OPTIONS little_endian`
-#[ "${FLAG_BIG_ENDIAN}" = "1" -a "${FLAG_LITTLE_ENDIAN}" = "1" ] \
-#    && echo "error: Ambiguous endian specifications" \
-#    && exit
-#[ "${FLAG_BIG_ENDIAN}" = "1" ]    && OPT_ENDIAN="-be"
-#[ "${FLAG_LITTLE_ENDIAN}" = "1" ] && OPT_ENDIAN="-le"
-
-#echo ${TEMP_DIR}
-#exit 1
-
-#for(( i=1; $i<=10; i=$i+1 ))
-#do
-#    TEMP=`date +%s`
-#    GS=monthly_${TEMP}.gs
-#    DAT=monthly_${TEMP}.dat
-#    [ ! -f ${GS} -o ! -f ${DAT} ] && break
-#    [ ! -f ${GS} ] && break
-#    sleep 1s
-#done
-#trap "rm ${GS} ${DAT}" 0
-#trap "rm ${GS} " 0
-
-
-#[ -f ${OUTPUT_DATA} ] && rm -f ${OUTPUT_DATA}
-#for(( t=${TMIN}; $t<=${TMAX}; t=$t+1 ))
-#do
-#    
-#done
-
-#INPUT_DATA=`grep ^DSET ${INPUT_CTL} | sed -e "s/DSET  *^//" -e "s/%ch//"`
-#echo ${INPUT_DATA}
-#exit
-
-#zonal_mean dummy fin fout xdef num undef
-
-#exit
-
 GS=${TEMP_DIR}/temp.gs
-
-
 cat > ${GS} <<EOF
 'reinit'
 rc = gsfallow( 'on' )
@@ -169,16 +114,6 @@ rc = gsfallow( 'on' )
 'set x 1'
 'set y 1 ${YDEF}'
 
-*if( valnum('${T_START}') = 0 )
-*  t_start = time2t( '${T_START}' )
-*else
-*  t_start = '${T_START}'
-*endif
-*if( valnum('${T_END}') = 0 )
-*  t_end = time2t( '${T_END}' )
-*else
-*  t_end = '${T_END}'
-*endif
 t_start = ${TMIN}
 t_end = ${TMAX}
 e_start = ${E_START}
@@ -216,9 +151,6 @@ endwhile
 'disable fwrite'
 'quit'
 EOF
-
-#cat ${GS}
-#exit 1
 grads -blc ${GS} || exit 1
 
 echo "$0 normally finished."
