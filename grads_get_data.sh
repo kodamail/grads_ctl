@@ -2,9 +2,13 @@
 #
 # just type ./get_data.sh for usage
 #
+. common.sh || exit 1
+create_temp
+TEMP_DIR=${BASH_COMMON_TEMP_DIR}
+trap 'finish' 0
+
 export LANG=en
 export PATH=$( cd $( dirname ${BASH_SOURCE:-$0} ); pwd ):${PATH}
-
 
 CTL=""
 VAR=""
@@ -112,7 +116,7 @@ if [ ${VERBOSE} -eq 1 ] ; then
 fi
 
 
-GS=temp_get_data_$$.gs
+GS=${TEMP_DIR}/temp.gs
 
 cat > ${GS} <<EOF
 'reinit'
@@ -149,9 +153,9 @@ endwhile
 'disable fwrite'
 'quit'
 EOF
-if [ ${VERBOSE} -gt 1 ] ; then
-    cat ${GS}
-    grads -blc ${GS} || exit e
+if [ ${VERBOSE} -ge 1 ] ; then
+    [ ${VERBOSE} -ge 2 ] && cat ${GS}
+    grads -blc ${GS} || exit 1
 else
     grads -blc ${GS} > /dev/null  || exit 1
 fi
