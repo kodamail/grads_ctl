@@ -3,7 +3,7 @@
 # just type ./get_data.sh for usage
 #
 export LANG=en
-export PATH=$( pwd ):${PATH}
+export PATH=$( cd $( dirname ${BASH_SOURCE:-$0} ); pwd ):${PATH}
 
 
 CTL=""

@@ -5,7 +5,8 @@
 # If succeed, output "ok" and list of filename
 #
 export LANG=en
-export PATH=$( pwd ):${PATH}
+export PATH=$( cd $( dirname ${BASH_SOURCE:-$0} ); pwd ):${PATH}
+
 
 CTL=""   # control file name
 TMIN=""
