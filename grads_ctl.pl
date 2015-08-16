@@ -3,7 +3,7 @@
 # type "./grads_ctl.pl" or see end of file for help
 #
 use strict;
-my $ver="0.20r1";
+my $ver="0.20r2";
 #
 ############################################################
 #
@@ -438,10 +438,6 @@ sub main()
     #
     else
     {
-#	print "dump as control file is\n";
-#	print "under construction\n";
-	
-#	print "\n";
 	&dump_ctl( \%desc, "DSET" );
 	&dump_ctl( \%desc, "TITLE" );
 	&dump_ctl( \%desc, "CHSUB" );
@@ -454,14 +450,10 @@ sub main()
 	&dump_ctl( \%desc, "EDEF" );
 	&dump_ctl( \%desc, "VARS" );
 	exit;
-
-#	print "\n";
-#	exit 1;
     }
 
     return;
 }
-
 
 #
 ############################################################
@@ -475,7 +467,6 @@ sub dump_ctl()
     my $desc = shift;
     my $key  = shift;
 
-    #print "ok\n";
     if( ! defined( $$desc{$key} ) && "$key" ne "DIMS" ){ return -1; }
 
     #
@@ -602,7 +593,6 @@ sub dump_ctl_dims
 sub ana_ctl()
 {
     my $ctl      = shift;
-#    my $xdfopen  = shift;  # 0 or 1
     my $desc     = shift;
 
     my %args;          # arguements for each key
@@ -651,7 +641,6 @@ sub ana_ctl()
 	print STDERR "error: fails to analyze (line: $line ctl: $$ctl[$i])\n";
 	exit 1;
     }
-#    $$desc{aaa} = "bbb";
 
     #
     #----- analyze and store for desc
@@ -660,9 +649,7 @@ sub ana_ctl()
     for( my $j=0; $j<=$#KEYWORD; $j++ )
     {
 	if( $args{${KEYWORD[$j]}} eq "" ){ next; }
-	#$args{${KEYWORD[$j]}} =~ s/\n+$//;
 	my @tmp = split /\s+/, $args{${KEYWORD[$j]}};  # line(s) for key=${KEYWORD[$j]}
-#	print $args{${KEYWORD[$j]}} . "\n";
 	#
 	# single value
 	#
@@ -700,7 +687,6 @@ sub ana_ctl()
 		$$desc{$KEYWORD[$j]}->{$tmp[0]} = 1;
 		shift(@tmp)
 	    }
-#	    print "$$desc{$KEYWORD[$j]}->{BIG_ENDIAN}\n";
 	}
 	#
 	#----- CHSUB
@@ -727,9 +713,6 @@ sub ana_ctl()
 		push( @{$$desc{$KEYWORD[$j]}->{STR}}, $tmp[0] );
 		shift( @tmp );
 	    }
-#	    print $$desc{$KEYWORD[$j]}->{START}->[0] . "\n";
-#	    print $$desc{$KEYWORD[$j]}->{END}->[0] . "\n";
-#	    print $$desc{$KEYWORD[$j]}->{STR}->[0] . "\n";
 	}
 	#
 	#----- XDEF (, YDEF, ZDEF, TDEF, EDEF)
@@ -747,7 +730,6 @@ sub ana_ctl()
 	       || "$KEYWORD[$j]" eq "EDEF" )
 	{
 	    if( $tmp[0] !~ /^[0-9]+$/ ){ shift(@tmp); }  # possible xdfopen style -> shift
-#	    if( $xdfopen eq 1 ){ shift(@tmp); }
 
 	    $tmp[1] = uc( $tmp[1] );
 	    $ref = { "$tmp[1]" => "", "NUM" => "$tmp[0]", "TYPE" => "$tmp[1]" };
@@ -781,8 +763,6 @@ sub ana_ctl()
 		print STDERR "ctl syntax error: @tmp\n";
 		exit 1
 	    }
-
-#	    print $tmp[1] . "\n";
 	}
 	#
 	# $$desc{VARS}->{NUM}: number of variables
@@ -813,8 +793,6 @@ sub ana_ctl()
 	}
 
     }
-#    my $ref_hash = { "aa" => "bb" };
-#    print $$ref_hash{aa};
     return;
 }
 
@@ -828,7 +806,6 @@ sub ana_nc()
     my $nc      = shift;
     my $desc     = shift;
 
-#    my @vlist;         # variable list
     my $mode = "";
     my $mode2 = "";
     my $val;
@@ -872,17 +849,17 @@ sub ana_nc()
 		elsif( $id =~ /^time$/i ){ $key = "TDEF"; }
 		$ref = { "NUM" => "$val", "TYPE" => "LEVELS" };
 		$$desc{$key} = $ref;
-#		$$desc{$key}->{NUM} = $val;
-#		$$desc{$key}->{TYPE} = "LEVELS";
 		next LINELOOP;
 	    }
 	}
 
 	if( $mode eq "variables" )
 	{
+#print STDERR $$nc[$i] . "\n";
 	    if( $$nc[$i] =~ /([a-zA-Z][a-zA-Z0-9_]*) *\((lon|lat|lev|time)( *, *(lon|lat|lev|time))* *\)/i )
 	    {
 		$var = $1;
+#print STDERR "  1: " . $var . "\n";
 		if( $var !~ /^(lon|lat|lev|time)$/i )
 		{
 		    #push( @vlist, $var );
@@ -901,7 +878,7 @@ sub ana_nc()
 #	    elsif( $$nc[$i] =~ /$var:([a-zA-Z0-9_]+)\s*=\s*\"([^\"]*)\"/ )
 	    {
 		my ( $attr, $val ) = ( $1, $2 );
-
+#print STDERR "  2: " . $var . "\n";
 		if( $var eq "time" && $attr eq "units" )
 		{
 		    @tdef_units = split( /\s+/, $val );
@@ -916,20 +893,14 @@ sub ana_nc()
 
 		if( $var !~ /^(lon|lat|lev|time)$/i )
 		{
-#		    print $attr . "\n";
-#		    print $val . "\n";
-#		    exit 1;
 		    if( $attr eq "long_name" )
 		    {
-			$$desc{VARS}->{VAR}->{$var}->{DESC} = $val;
-#			exit;
+			if( $val ne "" ){ $$desc{VARS}->{VAR}->{$var}->{DESC} = $val; }
 		    }
 		    if( $attr eq "_FillValue" )
 		    {
- 			$$desc{VARS}->{VAR}->{$var}->{UNDEF} = $val;
+ 			if( $val ne "" ){ $$desc{VARS}->{VAR}->{$var}->{UNDEF} = $val; }
  			$$desc{UNDEF} = $val;  # overwrite
-#			print $val . ": ok\n";
-#			exit;
 		    }
 
 		    # : number of levels for each variable
