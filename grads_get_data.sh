@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# just type ./get_data.sh for usage
+# type ./grads_get_data.sh for usage
 #
 . common.sh || exit 1
 create_temp
@@ -18,6 +18,8 @@ TMAX=""
 TINT=1
 YMD_MIN=""  # in YYYYMMDD
 YMD_MAX=""  # in YYYYMMDD
+CAL_MIN=""  # in YYYYMMDD.HHMMSS
+CAL_MAX=""  # in YYYYMMDD.HHMMSS
 ZMIN=1
 ZMAX=""
 VERBOSE=0
@@ -29,7 +31,9 @@ usage:
      ctl-filename variable-name output-filename
      [ -t tmin[:tmax[:tint]] ]
      [ -ymd ymdmin:ymdmax[:tint] ]
-     [ -ymd ("["|"(")ymdmin:ymdmax[:tint](")"|"]") ]
+     [ -ymd ("["|"(")ymdmin:ymdmax(")"|"]")[:tint] ]
+     [ -cal calmin:calmax[:tint] ]
+     [ -cal ("["|"(")calmin:calmax(")"|"]")[:tint] ]
      [ -z zmin[:zmax] ]
      [ -v [ -v ] ]
 EOF
@@ -58,6 +62,13 @@ while [ "$1" != "" ] ; do
 	shift; TMP=$1
 	YMD_MIN=$( echo ${TMP} | cut -d : -f 1 )
 	YMD_MAX=$( echo ${TMP} | cut -d : -f 2 )
+	TINT=$( echo ${TMP} | cut -d : -f 3 )
+	[ "${TINT}" = "" ] && TINT=1
+
+    elif [ "$1" = "-cal" ] ; then
+	shift; TMP=$1
+	CAL_MIN=$( echo ${TMP} | cut -d : -f 1 )
+	CAL_MAX=$( echo ${TMP} | cut -d : -f 2 )
 	TINT=$( echo ${TMP} | cut -d : -f 3 )
 	[ "${TINT}" = "" ] && TINT=1
 
@@ -91,6 +102,8 @@ if [ ${VERBOSE} -gt 1 ] ; then
     echo "TINT: ${TINT}"
     echo "YMD_MIN: ${YMD_MIN}"
     echo "YMD_MAX: ${YMD_MAX}"
+    echo "CAL_MIN: ${CAL_MIN}"
+    echo "CAL_MAX: ${CAL_MAX}"
 fi
 
 if [ ! -f "${CTL}" ] ; then
@@ -113,8 +126,23 @@ if [ "${YMD_MIN}" != "" -a "${YMD_MAX}" != "" ] ; then
     else
 	TMAX=$( grads_time2t.sh ${CTL} ${YMD_MAX:0:8} -le ) || exit 1
     fi
-#    GRADS_MIN=$( date --date "${YMD_MIN}" +00z%d%b%Y )
-#    GRADS_MAXPP=$( date --date "${YMD_MAX} 1 days" +00z%d%b%Y )
+fi
+
+if [ "${CAL_MIN}" != "" -a "${CAL_MAX}" != "" ] ; then
+    if [ "${CAL_MIN:0:1}" = "(" ] ; then
+	TMIN=$( grads_time2t.sh ${CTL} ${CAL_MIN:1:15} -gt ) || exit 1
+    elif [ "${CAL_MIN:0:1}" = "[" ] ; then
+	TMIN=$( grads_time2t.sh ${CTL} ${CAL_MIN:1:15} -ge ) || exit 1
+    else
+	TMIN=$( grads_time2t.sh ${CTL} ${CAL_MIN:0:15} -ge ) || exit 1
+    fi
+    
+    TMP=${CAL_MAX:${#CAL_MAX}-1:1}
+    if [ "${TMP}" = ")" ] ; then
+	TMAX=$( grads_time2t.sh ${CTL} ${CAL_MAX:0:15} -lt ) || exit 1
+    else
+	TMAX=$( grads_time2t.sh ${CTL} ${CAL_MAX:0:15} -le ) || exit 1
+    fi
 fi
 
 
