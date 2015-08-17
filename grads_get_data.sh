@@ -25,11 +25,13 @@ VERBOSE=0
 if [ "$1" = "" ] ; then
     cat <<EOF
 usage:
- get_data.sh ctl-filename variable-name output-filename
-             [ -t tmin[:tmax[:tint]] ]
-             [ -ymd ymdmin:ymdmax[:tint] ]
-             [ -ymd ("["|"(")ymdmin:ymdmax[:tint](")"|"]") ]
-             [ -z zmin[:zmax] ]
+ $0
+     ctl-filename variable-name output-filename
+     [ -t tmin[:tmax[:tint]] ]
+     [ -ymd ymdmin:ymdmax[:tint] ]
+     [ -ymd ("["|"(")ymdmin:ymdmax[:tint](")"|"]") ]
+     [ -z zmin[:zmax] ]
+     [ -v [ -v ] ]
 EOF
 #               -gdate gdatemin:gdatemax[:tint]
     exit
@@ -72,7 +74,7 @@ while [ "$1" != "" ] ; do
 	OUTPUT=$1
 
     else
-	echo "error in $0: $1 is not supported."
+	echo "error in $0: $1 is not supported." >&2
 	exit 1
     fi
 
@@ -89,6 +91,11 @@ if [ ${VERBOSE} -gt 1 ] ; then
     echo "TINT: ${TINT}"
     echo "YMD_MIN: ${YMD_MIN}"
     echo "YMD_MAX: ${YMD_MAX}"
+fi
+
+if [ ! -f "${CTL}" ] ; then
+    echo "error: ${CTL} does not exist." >&2
+    exit 1
 fi
 
 if [ "${YMD_MIN}" != "" -a "${YMD_MAX}" != "" ] ; then
@@ -155,10 +162,16 @@ endwhile
 EOF
 if [ ${VERBOSE} -ge 1 ] ; then
     [ ${VERBOSE} -ge 2 ] && cat ${GS}
-    grads -blc ${GS} || exit 1
+#    grads -blc ${GS} || exit 1
+    grads -blc ${GS} | tee ${TEMP_DIR}/temp.log || exit 1
 else
-    grads -blc ${GS} > /dev/null  || exit 1
+    grads -blc ${GS} > ${TEMP_DIR}/temp.log || { cat ${TEMP_DIR}/temp.log ; exit 1 ; }
+fi
+
+FLAG=$( grep -i error ${TEMP_DIR}/temp.log )
+if [ "${FLAG}" != "" ] ; then
+    [ ${VERBOSE} -eq 0 ] && cat ${TEMP_DIR}/temp.log
+    exit 1
 fi
 
 rm ${GS}
-
