@@ -992,7 +992,9 @@ sub levels2linear()
     $$desc{$key}->{LINEAR}->[1] = $incre;
     for( my $i=1; $i<=$$desc{$key}->{NUM}-2; $i++ )
     {
-	if( $incre != $$desc{$key}->{LEVELS}->[$i+1] - $$desc{$key}->{LEVELS}->[$i] )
+	my $incre_tmp = $$desc{$key}->{LEVELS}->[$i+1] - $$desc{$key}->{LEVELS}->[$i];
+#	if( $incre != $incre_tmp )
+	if( abs( ( $incre - $incre_tmp ) / $incre ) > 1.0e-10 )
 	{ undef( @{$$desc{$key}->{LINEAR}} ); last; }
     }
 }
