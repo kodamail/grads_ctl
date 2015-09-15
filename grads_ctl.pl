@@ -18,7 +18,7 @@ my @KEYWORD = ( "DSET", "CHSUB", "DTYPE", "INDEX", "STNMAP",
 		"THEADER", "HEADERBYTES", "TRAILERBYTES", "XVAR", "YVAR", 
 		"ZVAR", "STID", "TVAR", "TOFFVAR", "OPTIONS", 
 		"PDEF", "XDEF", "YDEF", "ZDEF", "TDEF", 
-		"EDEF", "VECTORPAIRS", "VARS", "ENDVARS" );
+		"EDEF", "ENDEDEF", "VECTORPAIRS", "VARS", "ENDVARS" );
 #
 #----- key words which allow multiple line
 #
@@ -731,11 +731,12 @@ sub ana_ctl()
 	{
 	    if( $tmp[0] !~ /^[0-9]+$/ ){ shift(@tmp); }  # possible xdfopen style -> shift
 
-	    $tmp[1] = uc( $tmp[1] );
-	    $ref = { "$tmp[1]" => "", "NUM" => "$tmp[0]", "TYPE" => "$tmp[1]" };
+	    my $tmp1 = uc( $tmp[1] );
+#	    $tmp[1] = uc( $tmp[1] );
+	    $ref = { "$tmp1" => "", "NUM" => "$tmp[0]", "TYPE" => "$tmp1" };
 	    $$desc{$KEYWORD[$j]} = $ref;
 
-	    if( "$tmp[1]" eq "LEVELS" )
+	    if( "$tmp1" eq "LEVELS" )
 	    {
 #		$ref = [1, 2, 1];
 		$ref = [ @tmp[2..$#tmp] ];
@@ -745,13 +746,26 @@ sub ana_ctl()
 		&levels2linear( $desc, $KEYWORD[$j] );
 
 	    }
-	    elsif( "$tmp[1]" eq "NAMES" && "$KEYWORD[$j]" eq "EDEF" )
+	    elsif( "$tmp1" eq "NAMES" && "$KEYWORD[$j]" eq "EDEF" )
 	    {
 		$ref = [ @tmp[2..$#tmp] ];
 		$$desc{$KEYWORD[$j]}->{NAMES} = $ref;
 		# note: expanded expression of EDEF is not supported now.
 	    }
-	    elsif( "$tmp[1]" eq "LINEAR" )
+	    elsif( "$KEYWORD[$j]" eq "EDEF" )  # expanded expression
+	    {
+		$$desc{$KEYWORD[$j]}->{NAMES} = [];
+		for( my $e=1; $e<=$#tmp; $e+=3 )
+		{
+		    push( @{$$desc{$KEYWORD[$j]}->{NAMES}}, $tmp[$e] );
+		}
+#		print STDERR $$desc{$KEYWORD[$j]}->{NAMES}->[0] . "\n";
+#		print STDERR $$desc{$KEYWORD[$j]}->{NAMES}->[1] . "\n";
+#		exit 1;
+#		$ref = [ @tmp[2..$#tmp] ];
+#		$$desc{$KEYWORD[$j]}->{NAMES} = $ref;
+	    }
+	    elsif( "$tmp1" eq "LINEAR" )
 	    {
 		$tmp[2] = uc( $tmp[2] );
 		$tmp[3] = uc( $tmp[3] );
@@ -786,6 +800,10 @@ sub ana_ctl()
 	    }
 	}
 
+	elsif( "$KEYWORD[$j]" eq "ENDEDEF" )
+	{
+	}
+	
 	else
 	{
 	    print STDERR "ctl syntax error: ${KEYWORD[$j]} is not supported now\n";
