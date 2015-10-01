@@ -729,7 +729,11 @@ sub ana_ctl()
 	       || "$KEYWORD[$j]" eq "TDEF" 
 	       || "$KEYWORD[$j]" eq "EDEF" )
 	{
-	    if( $tmp[0] !~ /^[0-9]+$/ ){ shift(@tmp); }  # possible xdfopen style -> shift
+	    if( $tmp[0] !~ /^[0-9]+$/ )  # possible xdfopen style -> shift
+	    {
+		shift(@tmp);
+		if( $tmp[0] eq "" ){ next; }
+	    }
 
 	    my $tmp1 = uc( $tmp[1] );
 #	    $tmp[1] = uc( $tmp[1] );
