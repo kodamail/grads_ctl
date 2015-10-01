@@ -374,23 +374,32 @@ sub main()
             # target = "NUM": number of grids
 	    if( "$arg{target}" eq "NUM" )
 	    {
-		if(    defined( $desc{XDEF} ) && defined( $desc{YDEF} ) 
-		    && defined( $desc{ZDEF} ) && defined( $desc{TDEF} )
-		    && defined( $desc{EDEF} ) )
+		my @tmp_dim = ( 1, 1, 1, 1, 1 );
+		if( defined( $desc{XDEF} ) )
 		{
-		    if(    defined( $desc{XDEF}->{NUM} ) && defined( $desc{YDEF}->{NUM} ) 
-			&& defined( $desc{ZDEF}->{NUM} ) && defined( $desc{TDEF}->{NUM} )
-	                && defined( $desc{EDEF}->{NUM} ) )
-		    {
-			print $desc{XDEF}->{NUM} . " " 
-			    . $desc{YDEF}->{NUM} . " " 
-			    . $desc{ZDEF}->{NUM} . " " 
-			    . $desc{TDEF}->{NUM} . " "
-			    . $desc{EDEF}->{NUM} . "\n";
-			exit;
-		    }
+		    if( defined( $desc{XDEF}->{NUM} ) ){ $tmp_dim[0] = $desc{XDEF}->{NUM}; }
 		}
-		print "1\n";
+		if( defined( $desc{YDEF} ) )
+		{
+		    if( defined( $desc{YDEF}->{NUM} ) ){ $tmp_dim[1] = $desc{YDEF}->{NUM}; }
+		}
+		if( defined( $desc{ZDEF} ) )
+		{
+		    if( defined( $desc{ZDEF}->{NUM} ) ){ $tmp_dim[2] = $desc{ZDEF}->{NUM}; }
+		}
+		if( defined( $desc{TDEF} ) )
+		{
+		    if( defined( $desc{TDEF}->{NUM} ) ){ $tmp_dim[3] = $desc{TDEF}->{NUM}; }
+		}
+		if( defined( $desc{EDEF} ) )
+		{
+		    if( defined( $desc{EDEF}->{NUM} ) ){ $tmp_dim[4] = $desc{EDEF}->{NUM}; }
+		}
+		print $tmp_dim[0] . " "   # XDEF
+		    . $tmp_dim[1] . " "   # YDEF
+		    . $tmp_dim[2] . " "   # ZDEF
+		    . $tmp_dim[3] . " "   # TDEF
+		    . $tmp_dim[4] . "\n"; # EDEF
 		exit;
 	    }
 	    else{ print STDERR "syntax error for key=$arg{key}\n"; exit 1; }
