@@ -83,6 +83,13 @@ sub main()
     #
     # default
     #
+    if ( ! defined( $desc{ZDEF} ) )
+    {
+	my $ref = { "NUM" => "1", "TYPE" => "LEVELS" };
+	$desc{ZDEF} = $ref;
+	$ref = [ 0 ];
+	$desc{ZDEF}->{LEVELS} = $ref;
+    }
     if ( ! defined( $desc{EDEF} ) )
     {
 	my $ref = { "NAMES" => "", "NUM" => "1", "TYPE" => "NAMES" };
