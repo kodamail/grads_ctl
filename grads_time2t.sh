@@ -1,11 +1,10 @@
 #!/bin/sh
+export LANG=en
+export PATH=$( cd $( dirname ${BASH_SOURCE:-$0} ); pwd ):${PATH}
 . common.sh || exit 1
 create_temp
 TEMP_DIR=${BASH_COMMON_TEMP_DIR}
 trap 'finish' 0
-
-export LANG=en
-export PATH=$( cd $( dirname ${BASH_SOURCE:-$0} ); pwd ):${PATH}
 
 CTL=$1
 TIME=$2 # e.g., "01jan2004", "12:30z15jan1995", "20040701", "20040701.060000"

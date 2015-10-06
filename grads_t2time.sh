@@ -1,4 +1,6 @@
 #!/bin/sh
+export LANG=en
+export PATH=$( cd $( dirname ${BASH_SOURCE:-$0} ); pwd ):${PATH}
 
 CTL=$1
 T=$2

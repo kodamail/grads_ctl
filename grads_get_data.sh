@@ -2,13 +2,12 @@
 #
 # type ./grads_get_data.sh for usage
 #
+export LANG=en
+export PATH=$( cd $( dirname ${BASH_SOURCE:-$0} ); pwd ):${PATH}
 . common.sh || exit 1
 create_temp
 TEMP_DIR=${BASH_COMMON_TEMP_DIR}
 trap 'finish' 0
-
-export LANG=en
-export PATH=$( cd $( dirname ${BASH_SOURCE:-$0} ); pwd ):${PATH}
 
 CTL=""
 VAR=""
