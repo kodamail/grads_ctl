@@ -1062,6 +1062,7 @@ sub linear2levels()
 	elsif( $incre =~ /^(\d+)(MO)$/ )
 	{
 	    $incre = $1 * ( $index - 1 );
+	    if( $start =~ /[a-zA-Z][a-zA-Z][a-zA-Z][0-9][0-9][0-9][0-9]/ ){ $start = "01" . $start; }
 	    $ret = `export LANG=en ; date -u --date "$start $incre months" +%H:%MZ%d%b%Y`;
 	    $ret =~ s/\n//;
 	}
