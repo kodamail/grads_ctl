@@ -229,14 +229,22 @@ sub main()
 		for( my $i=$min; $i<=$max; $i++ )
 		{
 		    my $gtime = &levels( \%desc, "TDEF", $i );
-		    my $date = `export LANG=en ; date -u --date "$gtime" +%Y%m%d\\\ %H:%M:%S`;
-		    my $y4 = substr($date, 0, 4);
-		    my $m2 = substr($date, 4, 2);
-		    my $d2 = substr($date, 6, 2);
+		    my $date = `export LANG=C ; date -u --date "$gtime" +%Y%m%d\\\ %H:%M:%S`;
+		    my $y4 = substr($date,  0, 4);
+		    my $m2 = substr($date,  4, 2);
+		    my $d2 = substr($date,  6, 2);
+		    my $h2 = substr($date,  9, 2);
+		    my $n2 = substr($date, 11, 2);
+		    my $m1 = $m2; $m1 =~ s/^0//;
+		    my $d1 = $d2; $d1 =~ s/^0//;
 		    my $tmp = $desc{$arg{key}};
 		    $tmp =~ s/%y4/$y4/ig;
 		    $tmp =~ s/%m2/$m2/ig;
+		    $tmp =~ s/%m1/$m1/ig;
 		    $tmp =~ s/%d2/$d2/ig;
+		    $tmp =~ s/%d1/$d1/ig;
+		    $tmp =~ s/%h2/$h2/ig;
+		    $tmp =~ s/%n2/$n2/ig;
 		    if( "$tmp" ne "$prev")
 		    {
 			print $tmp . "\n";
