@@ -195,7 +195,7 @@ else
     grads -blc ${GS} > ${TEMP_DIR}/temp.log || { cat ${TEMP_DIR}/temp.log ; exit 1 ; }
 fi
 
-FLAG=$( grep -i error ${TEMP_DIR}/temp.log )
+FLAG=$( grep -i "error\|warning" ${TEMP_DIR}/temp.log )
 if [ "${FLAG}" != "" ] ; then
     [ ${VERBOSE} -eq 0 ] && cat ${TEMP_DIR}/temp.log
     exit 1
