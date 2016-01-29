@@ -3,7 +3,7 @@
 # type "./grads_ctl.pl" or see end of file for help
 #
 use strict;
-my $ver="0.20r2";
+my $ver="0.21r1";
 #
 ############################################################
 #
@@ -44,6 +44,7 @@ sub main()
     #
     my %arg;
     $arg{ncdump} = "ncdump";
+    $arg{set}    = [];  # array
     my $i = 0;
     while( $i <= $#ARGV )
     {
@@ -51,6 +52,8 @@ sub main()
 	elsif( "$ARGV[$i]" eq "--key"     ){ $i++; $arg{key}    = uc( $ARGV[$i] ); }
 	elsif( "$ARGV[$i]" eq "--nc"      ){ $i++; $arg{nc}     =     $ARGV[$i];   }
 	elsif( "$ARGV[$i]" eq "--ncdump"  ){ $i++; $arg{ncdump} =     $ARGV[$i];   }
+	elsif( "$ARGV[$i]" eq "--set"     ){ $i++; push( @{$arg{set}}, $ARGV[$i] ); }
+	elsif( "$ARGV[$i]" eq "--set-vars-zdef-nums" ){ $i++; $arg{set_vars_zdef_nums} = $ARGV[$i]; }
 	elsif( "$ARGV[$i]" eq "--target"  ){ $i++; $arg{target} = uc( $ARGV[$i] ); }
 	elsif( "$ARGV[$i]" eq "--unit"    ){ $i++; $arg{unit}   = uc( $ARGV[$i] ); }
 	elsif( "$ARGV[$i]" eq "--value"   ){ $i++; $arg{value}  =     $ARGV[$i];   }
@@ -148,6 +151,26 @@ sub main()
 
 	    # overwrite by control file (analyze again)
 	    &ana_ctl( \@tmp, \%desc );
+	}
+    }
+    #
+    ############################################################
+    #
+    # modify values (--set)
+    #
+    ############################################################
+    #
+    if( $#{$arg{set}} >= 0 )
+    {
+	# overwrite by --set values (analyze again)
+	&ana_ctl( \@{$arg{set}}, \%desc );
+    }
+    if( $arg{set_vars_zdef_nums} ne "" )
+    {
+	for( my $i=0; $i<$desc{VARS}->{NUM}; $i++ )
+	{
+	    my $var = $desc{VARS}->{LIST}->[$i];
+	    $desc{VARS}->{VAR}->{$var}->{ZNUM} = $arg{set_vars_zdef_nums};
 	}
     }
     #
@@ -1126,6 +1149,7 @@ Usage:
     [ [--ctl] ctl-filename | [--nc] netcdf-filename]
     [ [--key] keyword [ [--target] target] [--unit unit] [--var var] [--value value] ]
     [--ncdump fullpath-to-ncdump]
+    [--set arg1 [--set arg2 ...] ] [--set-vars-zdef-num num]
 
 Options:
   --key ( "DSET" | "TITLE" | "CHSUB" | "OPTIONS" | "UNDEF" | "XDEF" | "YDEF" | "ZDEF" | "TDEF" | "EDEF" | "DIMS")
@@ -1170,6 +1194,13 @@ Options:
     target = "ALL"
       All the name of variables.
 
+  --set arg
+    Forced to set elements. Specify twice or mode if you need multiple lines.
+
+  --set-vars-zdef-num num
+    Forced to set number of levels for all the variables in VARS.
+
+
   Below keywords are not supported now:
     keyword = "DTYPE", "INDEX", "STNMAP", "UNPACK", "FILEHEADER", "XYHEADER", "THEADER", "HEADERBYTES", "TRAILERBYTES", "XVAR", "YVAR", "ZVAR", "STID", "TVAR", "TOFFVAR", "PDEF", "VECTORPAIRS"
 
@@ -1178,7 +1209,5 @@ Examples:
     Display number of levels in X coordinate.
 
 EOF
-#    [--force-xdef?]
-#    return 0;
 }
 exit 1;
