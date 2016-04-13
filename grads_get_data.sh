@@ -22,6 +22,7 @@ CAL_MAX=""  # in YYYYMMDD.HHMMSS
 ZMIN=1
 ZMAX=""
 VERBOSE=0
+DISP=0   # draw instead of dump data
 
 if [ "$1" = "" ] ; then
     cat <<EOF
@@ -34,7 +35,7 @@ usage:
      [ -cal calmin:calmax[:tint] ]
      [ -cal ("["|"(")calmin:calmax(")"|"]")[:tint] ]
      [ -z zmin[:zmax] ]
-     [ -v [ -v ] ]
+     [ -v [ -v ] ] [ -disp ]
 EOF
 #               -gdate gdatemin:gdatemax[:tint]
     exit
@@ -73,6 +74,9 @@ while [ "$1" != "" ] ; do
 
     elif [ "$1" = "-v" ] ; then
 	let VERBOSE=VERBOSE+1
+
+    elif [ "$1" = "-disp" ] ; then
+	let DISP=1
 
     elif [ "${CTL}" = "" ] ; then
 	CTL=$1
@@ -156,9 +160,11 @@ cat > ${GS} <<EOF
 'reinit'
 rc = gsfallow( 'on' )
 'xopen ${CTL}'
-'set gxout fwrite'
-'set fwrite -be ${OUTPUT}'
-'set undef -0.99900E+35'
+if( ${DISP} = 0 )
+  'set gxout fwrite'
+  'set fwrite -be ${OUTPUT}'
+  'set undef -0.99900E+35'
+endif
 xdef = qctlinfo( 1, 'xdef', 1 )
 ydef = qctlinfo( 1, 'ydef', 1 )
 if( '${ZMAX}' = '' )
@@ -184,12 +190,16 @@ while( t <= tmax )
   endwhile
   t = t + ${TINT}
 endwhile
-'disable fwrite'
+if( '${DISP}' = 0 )
+  'disable fwrite'
+endif
 'quit'
 EOF
-if [ ${VERBOSE} -ge 1 ] ; then
+if [ ${DISP} -ge 1 ] ; then
     [ ${VERBOSE} -ge 2 ] && cat ${GS}
-#    grads -blc ${GS} || exit 1
+    grads -lc ${GS}
+elif [ ${VERBOSE} -ge 1 ] ; then
+    [ ${VERBOSE} -ge 2 ] && cat ${GS}
     grads -blc ${GS} | tee ${TEMP_DIR}/temp.log || exit 1
 else
     grads -blc ${GS} > ${TEMP_DIR}/temp.log || { cat ${TEMP_DIR}/temp.log ; exit 1 ; }
