@@ -104,7 +104,7 @@ for DSET in ${DSET_LIST[@]} ; do
     FILE_LIST[${#FILE_LIST[@]}]=${FILE}
 
     if [ ! -f ${FILE} ] ; then
-	STATUS="fail_file_exist"
+	STATUS="fail_file_exist ${FILE}"
 	break
     fi
 done
