@@ -23,6 +23,7 @@ ZMIN=1
 ZMAX=""
 VERBOSE=0
 DISP=0   # draw instead of dump data
+FLAG_WARNING=1
 
 if [ "$1" = "" ] ; then
     cat <<EOF
@@ -35,7 +36,7 @@ usage:
      [ -cal calmin:calmax[:tint] ]
      [ -cal ("["|"(")calmin:calmax(")"|"]")[:tint] ]
      [ -z zmin[:zmax] ]
-     [ -v [ -v ] ] [ -disp ]
+     [ -v [ -v ] ] [ -disp ] [-ignore-warning]
 EOF
 #               -gdate gdatemin:gdatemax[:tint]
     exit
@@ -76,7 +77,10 @@ while [ "$1" != "" ] ; do
 	let VERBOSE=VERBOSE+1
 
     elif [ "$1" = "-disp" ] ; then
-	let DISP=1
+	DISP=1
+
+    elif [ "$1" = "-ignore-warning" ] ; then
+	FLAG_WARNING=0
 
     elif [ "${CTL}" = "" ] ; then
 	CTL=$1
@@ -205,7 +209,11 @@ else
     grads -blc ${GS} > ${TEMP_DIR}/temp.log || { cat ${TEMP_DIR}/temp.log ; exit 1 ; }
 fi
 
-FLAG=$( grep -i "error\|warning" ${TEMP_DIR}/temp.log )
+if [ ${FLAG_WARNING} -eq 0 ] ; then
+    FLAG=$( grep -i "error" ${TEMP_DIR}/temp.log )
+else
+    FLAG=$( grep -i "error\|warning" ${TEMP_DIR}/temp.log )
+fi
 if [ "${FLAG}" != "" ] ; then
     [ ${VERBOSE} -eq 0 ] && cat ${TEMP_DIR}/temp.log
     exit 1
