@@ -951,7 +951,7 @@ sub ana_nc()
 		if( $var eq "time" && $attr eq "units" )
 		{
 		    @tdef_units = split( /\s+/, $val );
-		    my $tdef_init = `export LANG=en ; date -u --date "$tdef_units[2] $tdef_units[3]" +%H:%MZ%d%b%Y`;
+		    my $tdef_init = `export LANG=C ; date -u --date "$tdef_units[2] $tdef_units[3]" +%H:%MZ%d%b%Y`;
 		    $tdef_init =~ s/\n//g;
 		    
 		    $ref = {}; $$desc{TDEF} = $ref;		    
@@ -1087,20 +1087,20 @@ sub linear2levels()
 	{
 	    $f_tunit = $FAC_TUNIT{uc($2)};
 	    $incre = $1 * $f_tunit * ( $index - 1 );
-	    $ret = `export LANG=en ; date -u --date "$start $incre seconds" +%H:%MZ%d%b%Y`;
+	    $ret = `export LANG=C ; date -u --date "$start $incre seconds" +%H:%MZ%d%b%Y`;
 	    $ret =~ s/\n//;
 	}
 	elsif( $incre =~ /^(\d+)(MO)$/ )
 	{
 	    $incre = $1 * ( $index - 1 );
 	    if( $start =~ /^[a-zA-Z][a-zA-Z][a-zA-Z][0-9][0-9][0-9][0-9]$/ ){ $start = "01" . $start; }
-	    $ret = `export LANG=en ; date -u --date "$start $incre months" +%H:%MZ%d%b%Y`;
+	    $ret = `export LANG=C ; date -u --date "$start $incre months" +%H:%MZ%d%b%Y`;
 	    $ret =~ s/\n//;
 	}
 	elsif( $incre =~ /^(\d+)(YR)$/ )
 	{
 	    $incre = $1 * ( $index - 1 );
-	    $ret = `export LANG=en ; date -u --date "$start $incre years" +%H:%MZ%d%b%Y`;
+	    $ret = `export LANG=C ; date -u --date "$start $incre years" +%H:%MZ%d%b%Y`;
 	    $ret =~ s/\n//;
 	}
 	else

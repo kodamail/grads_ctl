@@ -4,7 +4,7 @@
 #
 # If succeed, output "ok" and list of filename
 #
-export LANG=en
+export LANG=C
 export PATH=$( cd $( dirname ${BASH_SOURCE:-$0} ); pwd ):${PATH}
 
 
