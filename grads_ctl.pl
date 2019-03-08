@@ -137,11 +137,13 @@ sub main()
 	#
 	if( $desc{DSET} =~ /\.nc/i )
 	{
-	    my $nc_filename = $desc{DSET};
+	    #my $nc_filename = $desc{DSET};
+	    my $nc_filename = &dset( \%desc, 1 ) . "\n";
+
 	    my $dir = $arg{ctl};
 	    $dir =~ s|[^/]*$||;
 	    $nc_filename =~ s|^\^|$dir|;
-	    $nc_filename =~ s|%ch|$desc{CHSUB}->{STR}->[0]|;
+#	    $nc_filename =~ s|%ch|$desc{CHSUB}->{STR}->[0]|;
 
 	    my %desc_esp = %desc;
 
@@ -209,7 +211,8 @@ sub main()
 	{
 	    if( ! defined( $desc{$arg{key}} ) ){ exit 1; }
 
-	    if( $desc{$arg{key}} !~ /(%ch|%m2|%d2)/ )
+#	    if( $desc{$arg{key}} !~ /(%ch|%m2|%d2)/ )
+	    if( $desc{$arg{key}} !~ /(%ch|%y4|%m2|%d2)/ )
 	    {
 		print $desc{$arg{key}} . "\n";
 		exit;
@@ -1136,6 +1139,47 @@ sub levels()
     return $ret;
 }    
 
+
+sub dset()
+{
+    my $desc = shift;
+    my $t    = shift;
+    my $ret;
+
+    if( $$desc{DSET} =~ /%ch/i )
+    {
+	$ret = $$desc{DSET};
+	for( my $i=0; $i<$$desc{CHSUB}->{NUM}; $i++ )
+	{
+	    if( $t >= $$desc{CHSUB}->{START}->[$i] && $t <= $$desc{CHSUB}->{END}->[$i] )
+	    {
+		$ret =~ s/%ch/$$desc{CHSUB}->{STR}->[$i]/g;
+		last;
+	    }
+	}
+    }
+    else
+    {
+	my $gtime = &levels( $desc, "TDEF", $t );
+	my $date = `export LANG=C ; date -u --date "$gtime" +%Y%m%d\\\ %H:%M:%S`;
+	my $y4 = substr($date,  0, 4);
+	my $m2 = substr($date,  4, 2);
+	my $d2 = substr($date,  6, 2);
+	my $h2 = substr($date,  9, 2);
+	my $n2 = substr($date, 11, 2);
+	my $m1 = $m2; $m1 =~ s/^0//;
+	my $d1 = $d2; $d1 =~ s/^0//;
+	$ret = $$desc{DSET};
+	$ret =~ s/%y4/$y4/ig;
+	$ret =~ s/%m2/$m2/ig;
+	$ret =~ s/%m1/$m1/ig;
+	$ret =~ s/%d2/$d2/ig;
+	$ret =~ s/%d1/$d1/ig;
+	$ret =~ s/%h2/$h2/ig;
+	$ret =~ s/%n2/$n2/ig;
+    }
+    return $ret;
+}
 
 
 sub help()
