@@ -580,6 +580,10 @@ sub dump_ctl()
 		. sprintf( "%5s", $$desc{VARS}->{VAR}->{$var}->{ZNUM} ). "  "
 	        . $$desc{VARS}->{VAR}->{$var}->{ATTR} . "  "
 	        . $$desc{VARS}->{VAR}->{$var}->{DESC} . "\n";
+
+#	    print "debug: " . $var . "\n";
+#	    print "debug: " . $$desc{VARS}->{VAR}->{'ms_u_p850=>ms_u'}->{ZNUM} . "\n";
+#	    exit;
 	}
 	print "ENDVARS\n";
 	return 0;
@@ -681,7 +685,7 @@ sub ana_ctl()
 	if( $key_now eq "VARS" )
 	{
 	    my $var_temp;
-	    if( $$ctl[$i] =~ /^([^ ]+)/     ){ $var_temp = lc( $1 ); push( @vlist, $var_temp ); }
+	    if( $$ctl[$i] =~ /^([^ \s]+)/     ){ $var_temp = lc( $1 ); push( @vlist, $var_temp ); }
 	    if( $$ctl[$i] =~ /^[^ ]+ +(.*)/ ){ $vargs{$var_temp} = $1; }
 	    next LINELOOP;
 	}
@@ -841,6 +845,11 @@ sub ana_ctl()
 	elsif( "$KEYWORD[$j]" eq "VARS" )
 	{
 	    $ref = { "VAR" => "", "NUM" => $#vlist+1, "LIST" => "" };
+	    my %desc_key_old;
+	    if( $$desc{$KEYWORD[$j]} )
+	    {
+		%desc_key_old = %{$$desc{$KEYWORD[$j]}};  # keep existing one to fullfill missing metadata
+	    }
 	    $$desc{$KEYWORD[$j]} = $ref;
 	    $ref = [ @vlist ]; $$desc{$KEYWORD[$j]}->{LIST} = $ref;
 	    $ref = {}; $$desc{$KEYWORD[$j]}->{VAR} = $ref;
@@ -848,9 +857,26 @@ sub ana_ctl()
 	    {
 		my @tmp_vargs = split /\s+/, $vargs{$var};
 		$ref = {}; $$desc{$KEYWORD[$j]}->{VAR}->{$var} = $ref;
+		my @var_split = split( /=>/, $var ); # for ms_u_p850=>ms_u
+		#
 		$$desc{$KEYWORD[$j]}->{VAR}->{$var}->{ZNUM} = $tmp_vargs[0];
+		if( $$desc{$KEYWORD[$j]}->{VAR}->{$var}->{ZNUM} eq "" && %desc_key_old )
+		{
+		    $$desc{$KEYWORD[$j]}->{VAR}->{$var}->{ZNUM} = $desc_key_old{VAR}->{$var_split[0]}->{ZNUM};
+		}
+		#
 		$$desc{$KEYWORD[$j]}->{VAR}->{$var}->{ATTR} = $tmp_vargs[1];
+		if( $$desc{$KEYWORD[$j]}->{VAR}->{$var}->{ATTR} eq "" && %desc_key_old )
+		{
+		    $$desc{$KEYWORD[$j]}->{VAR}->{$var}->{ATTR} = $desc_key_old{VAR}->{$var_split[0]}->{ATTR};
+		}
+		#
 		$$desc{$KEYWORD[$j]}->{VAR}->{$var}->{DESC} = @tmp_vargs[2..$#tmp_vargs];
+		if( $$desc{$KEYWORD[$j]}->{VAR}->{$var}->{DESC} eq "" && %desc_key_old )
+		{
+		    $$desc{$KEYWORD[$j]}->{VAR}->{$var}->{DESC} = $desc_key_old{VAR}->{$var_split[0]}->{DESC};
+		}
+
 	    }
 	}
 
