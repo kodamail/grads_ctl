@@ -232,6 +232,8 @@ sub main()
 		my ( $flag_min, $flag_max ) = ( $1, $4 );
 		if( "$flag_min" eq "(" ){ $min++; }
 		if( "$flag_max" eq ")" ){ $max--; }
+		if( $max > $desc{TDEF}->{NUM} )
+		{ print STDERR "error: time step = " . $arg{target} . " is out-of-range (TDEF=" . $desc{TDEF}->{NUM} . ").\n" ; exit 1; }
 	    }
 
 
@@ -239,7 +241,7 @@ sub main()
 	    {
 		for( my $i=0; $i<$desc{CHSUB}->{NUM}; $i++ )
 		{
-		    if(    ( $min >= $desc{CHSUB}->{START}->[$i] && $min <= $desc{CHSUB}->{END}->[$i] )
+		    if(       ( $min >= $desc{CHSUB}->{START}->[$i] && $min <= $desc{CHSUB}->{END}->[$i] )
 			   || ( $max >= $desc{CHSUB}->{START}->[$i] && $max <= $desc{CHSUB}->{END}->[$i] ) 
 			   || ( $min <= $desc{CHSUB}->{START}->[$i] && $max >= $desc{CHSUB}->{END}->[$i] )  )
 		    {
