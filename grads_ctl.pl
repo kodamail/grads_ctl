@@ -3,6 +3,7 @@
 # type "./grads_ctl.pl" or see end of file for help
 #
 use strict;
+use POSIX qw(floor);
 my $ver="0.21r1";
 #
 ############################################################
@@ -384,23 +385,81 @@ sub main()
 	    #                         (use --value to specify)
 	    elsif( "$arg{target}" eq "INDEX"  )
 	    {
-		if( $arg{value} !~ /^-*\d+(\.\d*)*$/ )
-		{ print STDERR "error: value is not specified.\n" ; exit 1;}
-		if( "$arg{key}" eq "TDEF" || "$arg{key}" eq "EDEF" )
-		{ print STDERR "error: key=$arg{key} with --target INDEX is not supported\n"; exit 1; }
-		my $dif_min = 1e+33;
-		my $idx = -1;
-		for( my $i=1; $i<=$desc{${arg{key}}}->{NUM}; $i++ )
+		if( "$arg{key}" eq "TDEF" )
 		{
-		    my $dif_tmp = abs( &levels( \%desc, $arg{key}, $i ) - $arg{value} );
-		    if( $dif_min > $dif_tmp )
+
+#		    print STDERR "$desc{${arg{key}}}->{LINEAR}->[0]\n";
+#		    print STDERR "$desc{${arg{key}}}->{LINEAR}->[1]\n";
+#		    print STDERR "$arg{value}\n";
+
+		    if( $desc{${arg{key}}}->{LINEAR}->[1] =~ /^(\d+)(SEC|MN|HR|DY)$/ )
 		    {
-			$dif_min = $dif_tmp;
-			$idx = $i;
+			my $incre = $1 * $FAC_TUNIT{uc($2)};
+			my $sec_start  = `export LANG=C ; date -u --date "$desc{${arg{key}}}->{LINEAR}->[0]" +%s`;
+			$sec_start =~ s/\n//g;
+
+			if( $arg{value} =~ /^(\[|\()?([^])]*)(\]|\))?$/ )
+			{
+			    my $flag_head = $1;
+			    my $flag_tail = $3;
+			    my $sec_target = `export LANG=C ; date -u --date "$2" +%s`;
+			    $sec_target =~ s/\n//g;
+			    my $idx = floor( ( $sec_target - $sec_start ) / $incre + 0.5 ) + 1;
+			    #my $level
+
+
+			    my $time_idx = &levels( \%desc, "TDEF", $idx );
+			    my $sec_idx = `export LANG=C ; date -u --date "$time_idx" +%s`;
+			    $sec_idx =~ s/\n//g;
+
+#			    print STDERR "$sec_start\n";
+#			    print STDERR "$sec_target\n";
+#			    print STDERR "$incre\n";
+
+#			    print STDERR floor(0.5) . ", " . floor(-1.5) . "\n";
+#			    print STDERR &round(0.5) . ", " . &round(-1.5) . "\n";
+
+#			    print STDERR "$time_idx $sec_idx\n";
+#			    print STDERR "$flag_head\n";
+#			    print STDERR "$idx\n";
+			    if( "$flag_head" eq "(" && ! ( $sec_target gt $sec_idx ) ){ $idx++; }
+			    if( "$flag_head" eq "[" && ! ( $sec_target ge $sec_idx ) ){ $idx++; }
+			    if( "$flag_tail" eq ")" && ! ( $sec_target lt $sec_idx ) ){ $idx--; }
+			    if( "$flag_tail" eq "]" && ! ( $sec_target le $sec_idx ) ){ $idx--; }
+
+			    print $idx . "\n";
+			    exit;
+			}
+			else
+			{
+			    print STDERR "error: value=$arg{value} is inappropriate.\n";
+			    exit 1;
+			}
 		    }
 		}
-		print $idx . "\n";
-		exit;
+		elsif( "$arg{key}" eq "EDEF" )
+		{
+		    print STDERR "error: key=$arg{key} with --target INDEX is not supported\n";
+		    exit 1;
+		}
+		else
+		{
+		    if( $arg{value} !~ /^-*\d+(\.\d*)*$/ )
+		    { print STDERR "error: value is not specified.\n" ; exit 1; }
+		    my $dif_min = 1e+33;
+		    my $idx = -1;
+		    for( my $i=1; $i<=$desc{${arg{key}}}->{NUM}; $i++ )
+		    {
+			my $dif_tmp = abs( &levels( \%desc, $arg{key}, $i ) - $arg{value} );
+			if( $dif_min > $dif_tmp )
+			{
+			    $dif_min = $dif_tmp;
+			    $idx = $i;
+			}
+		    }
+		    print $idx . "\n";
+		    exit;
+		}
 	    }
 	    else
 	    {
@@ -1148,7 +1207,6 @@ sub linear2levels()
     return $ret;
 }
 
-
 sub levels()
 {
     my $desc = shift;
@@ -1210,6 +1268,13 @@ sub dset()
 }
 
 
+sub round()
+{
+    my $var = shift;
+    my $a = ( $var > 0 ) ? 0.5 : -0.5;
+    return int( $var + $a )
+}
+
 sub help()
 {
     print << "EOF"
@@ -1253,6 +1318,10 @@ Options:
 
   --key ( "XDEF" | "YDEF" | "ZDEF" )  --target "index" --value value
     Index which is closest to the value.
+
+  --key "TDEF" --target "index" --value ["("|"["]time[")"|"]"]
+    Index which is closest to the value. 
+    For example, "(" means the time corresponding to the index shown must be later than the time specified in the argument. 
 
   --key "TDEF" --target "INC" --unit ( "SEC" | "MN" | "HR" | "DY" )
     Increment with specified time unit.
