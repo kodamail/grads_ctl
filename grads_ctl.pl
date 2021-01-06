@@ -258,7 +258,8 @@ sub main()
 		for( my $i=$min; $i<=$max; $i++ )
 		{
 		    my $gtime = &levels( \%desc, "TDEF", $i );
-		    my $date = `export LANG=C ; date -u --date "$gtime" +%Y%m%d\\\ %H:%M:%S`;
+		    #my $date = `export LANG=C ; date -u --date "$gtime" +%Y%m%d\\\ %H:%M:%S`;
+		    my $date = `LC_ALL=C date -u --date "$gtime" +%Y%m%d\\\ %H:%M:%S`;
 		    my $y4 = substr($date,  0, 4);
 		    my $m2 = substr($date,  4, 2);
 		    my $d2 = substr($date,  6, 2);
@@ -395,37 +396,46 @@ sub main()
 		    if( $desc{${arg{key}}}->{LINEAR}->[1] =~ /^(\d+)(SEC|MN|HR|DY)$/ )
 		    {
 			my $incre = $1 * $FAC_TUNIT{uc($2)};
-			my $sec_start  = `export LANG=C ; date -u --date "$desc{${arg{key}}}->{LINEAR}->[0]" +%s`;
+			#my $sec_start  = `export LANG=C ; date -u --date "$desc{${arg{key}}}->{LINEAR}->[0]" +%s`;
+			my $sec_start  = `LC_ALL=C date -u --date "$desc{${arg{key}}}->{LINEAR}->[0]" +%s`;
+
 			$sec_start =~ s/\n//g;
 
 			if( $arg{value} =~ /^(\[|\()?([^])]*)(\]|\))?$/ )
 			{
 			    my $flag_head = $1;
 			    my $flag_tail = $3;
-			    my $sec_target = `export LANG=C ; date -u --date "$2" +%s`;
+			    #my $sec_target = `export LANG=C ; date -u --date "$2" +%s`;
+			    my $sec_target = `LC_ALL=C date -u --date "$2" +%s`;
 			    $sec_target =~ s/\n//g;
 			    my $idx = floor( ( $sec_target - $sec_start ) / $incre + 0.5 ) + 1;
 			    #my $level
+			    print STDERR "sec_start:  $sec_start\n";
+			    print STDERR "sec_target: $sec_target\n";
+			    print STDERR "incre:      $incre\n";
 
 
 			    my $time_idx = &levels( \%desc, "TDEF", $idx );
-			    my $sec_idx = `export LANG=C ; date -u --date "$time_idx" +%s`;
+			    #my $sec_idx = `export LANG=C ; date -u --date "$time_idx" +%s`;
+			    my $sec_idx = `LC_ALL=C date -u --date "$time_idx" +%s`;
 			    $sec_idx =~ s/\n//g;
 
-#			    print STDERR "$sec_start\n";
-#			    print STDERR "$sec_target\n";
-#			    print STDERR "$incre\n";
 
 #			    print STDERR floor(0.5) . ", " . floor(-1.5) . "\n";
 #			    print STDERR &round(0.5) . ", " . &round(-1.5) . "\n";
 
-#			    print STDERR "$time_idx $sec_idx\n";
+			    print STDERR "time_idx: $time_idx\n";
+			    print STDERR "sec_idx: $sec_idx\n";
 #			    print STDERR "$flag_head\n";
-#			    print STDERR "$idx\n";
-			    if( "$flag_head" eq "(" && ! ( $sec_target gt $sec_idx ) ){ $idx++; }
-			    if( "$flag_head" eq "[" && ! ( $sec_target ge $sec_idx ) ){ $idx++; }
-			    if( "$flag_tail" eq ")" && ! ( $sec_target lt $sec_idx ) ){ $idx--; }
-			    if( "$flag_tail" eq "]" && ! ( $sec_target le $sec_idx ) ){ $idx--; }
+			    print STDERR "idx(before): $idx\n";
+#			    if( "$flag_head" eq "(" && ! ( $sec_target gt $sec_idx ) ){ $idx++; }
+#			    if( "$flag_head" eq "[" && ! ( $sec_target ge $sec_idx ) ){ $idx++; }
+#			    if( "$flag_tail" eq ")" && ! ( $sec_target lt $sec_idx ) ){ $idx--; }
+#			    if( "$flag_tail" eq "]" && ! ( $sec_target le $sec_idx ) ){ $idx--; }
+			    if( "$flag_head" eq "(" && ! ( $sec_idx >  $sec_target ) ){ $idx++; }
+			    if( "$flag_head" eq "[" && ! ( $sec_idx >= $sec_target ) ){ $idx++; }
+			    if( "$flag_tail" eq ")" && ! ( $sec_idx <  $sec_target ) ){ $idx--; }
+			    if( "$flag_tail" eq "]" && ! ( $sec_idx <= $sec_target ) ){ $idx--; }
 
 			    print $idx . "\n";
 			    exit;
@@ -1041,7 +1051,8 @@ sub ana_nc()
 		if( $var eq "time" && $attr eq "units" )
 		{
 		    @tdef_units = split( /\s+/, $val );
-		    my $tdef_init = `export LANG=C ; date -u --date "$tdef_units[2] $tdef_units[3]" +%H:%MZ%d%b%Y`;
+		    #my $tdef_init = `export LANG=C ; date -u --date "$tdef_units[2] $tdef_units[3]" +%H:%MZ%d%b%Y`;
+		    my $tdef_init = `LC_ALL=C date -u --date "$tdef_units[2] $tdef_units[3]" +%H:%MZ%d%b%Y`;
 		    $tdef_init =~ s/\n//g;
 		    
 		    $ref = {}; $$desc{TDEF} = $ref;		    
@@ -1177,20 +1188,23 @@ sub linear2levels()
 	{
 	    $f_tunit = $FAC_TUNIT{uc($2)};
 	    $incre = $1 * $f_tunit * ( $index - 1 );
-	    $ret = `export LANG=C ; date -u --date "$start $incre seconds" +%H:%MZ%d%b%Y`;
+	    #$ret = `export LANG=C ; date -u --date "$start $incre seconds" +%H:%MZ%d%b%Y`;
+	    $ret = `LC_ALL=C date -u --date "$start $incre seconds" +%H:%MZ%d%b%Y`;
 	    $ret =~ s/\n//;
 	}
 	elsif( $incre =~ /^(\d+)(MO)$/ )
 	{
 	    $incre = $1 * ( $index - 1 );
 	    if( $start =~ /^[a-zA-Z][a-zA-Z][a-zA-Z][0-9][0-9][0-9][0-9]$/ ){ $start = "01" . $start; }
-	    $ret = `export LANG=C ; date -u --date "$start $incre months" +%H:%MZ%d%b%Y`;
+	    #$ret = `export LANG=C ; date -u --date "$start $incre months" +%H:%MZ%d%b%Y`;
+	    $ret = `LC_ALL=C date -u --date "$start $incre months" +%H:%MZ%d%b%Y`;
 	    $ret =~ s/\n//;
 	}
 	elsif( $incre =~ /^(\d+)(YR)$/ )
 	{
 	    $incre = $1 * ( $index - 1 );
-	    $ret = `export LANG=C ; date -u --date "$start $incre years" +%H:%MZ%d%b%Y`;
+	    #$ret = `export LANG=C ; date -u --date "$start $incre years" +%H:%MZ%d%b%Y`;
+	    $ret = `LC_ALL=C date -u --date "$start $incre years" +%H:%MZ%d%b%Y`;
 	    $ret =~ s/\n//;
 	}
 	else
@@ -1247,7 +1261,8 @@ sub dset()
     else
     {
 	my $gtime = &levels( $desc, "TDEF", $t );
-	my $date = `export LANG=C ; date -u --date "$gtime" +%Y%m%d\\\ %H:%M:%S`;
+	#my $date = `export LANG=C ; date -u --date "$gtime" +%Y%m%d\\\ %H:%M:%S`;
+	my $date = `LC_ALL=C date -u --date "$gtime" +%Y%m%d\\\ %H:%M:%S`;
 	my $y4 = substr($date,  0, 4);
 	my $m2 = substr($date,  4, 2);
 	my $d2 = substr($date,  6, 2);
