@@ -410,9 +410,9 @@ sub main()
 			    $sec_target =~ s/\n//g;
 			    my $idx = floor( ( $sec_target - $sec_start ) / $incre + 0.5 ) + 1;
 			    #my $level
-			    print STDERR "sec_start:  $sec_start\n";
-			    print STDERR "sec_target: $sec_target\n";
-			    print STDERR "incre:      $incre\n";
+#			    print STDERR "sec_start:  $sec_start\n";
+#			    print STDERR "sec_target: $sec_target\n";
+#			    print STDERR "incre:      $incre\n";
 
 
 			    my $time_idx = &levels( \%desc, "TDEF", $idx );
@@ -424,10 +424,10 @@ sub main()
 #			    print STDERR floor(0.5) . ", " . floor(-1.5) . "\n";
 #			    print STDERR &round(0.5) . ", " . &round(-1.5) . "\n";
 
-			    print STDERR "time_idx: $time_idx\n";
-			    print STDERR "sec_idx: $sec_idx\n";
+#			    print STDERR "time_idx: $time_idx\n";
+#			    print STDERR "sec_idx: $sec_idx\n";
 #			    print STDERR "$flag_head\n";
-			    print STDERR "idx(before): $idx\n";
+#			    print STDERR "idx(before): $idx\n";
 #			    if( "$flag_head" eq "(" && ! ( $sec_target gt $sec_idx ) ){ $idx++; }
 #			    if( "$flag_head" eq "[" && ! ( $sec_target ge $sec_idx ) ){ $idx++; }
 #			    if( "$flag_tail" eq ")" && ! ( $sec_target lt $sec_idx ) ){ $idx--; }
