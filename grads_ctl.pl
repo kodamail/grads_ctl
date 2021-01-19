@@ -388,64 +388,50 @@ sub main()
 	    {
 		if( "$arg{key}" eq "TDEF" )
 		{
-
-#		    print STDERR "$desc{${arg{key}}}->{LINEAR}->[0]\n";
-#		    print STDERR "$desc{${arg{key}}}->{LINEAR}->[1]\n";
-#		    print STDERR "$arg{value}\n";
-
-		    if( $desc{${arg{key}}}->{LINEAR}->[1] =~ /^(\d+)(SEC|MN|HR|DY)$/ )
+		    if( $arg{value} =~ /^(\[|\()?([^])]*)(\]|\))?$/ )
 		    {
-			my $incre = $1 * $FAC_TUNIT{uc($2)};
-			#my $sec_start  = `export LANG=C ; date -u --date "$desc{${arg{key}}}->{LINEAR}->[0]" +%s`;
-			my $sec_start  = `LC_ALL=C date -u --date "$desc{${arg{key}}}->{LINEAR}->[0]" +%s`;
+			my $flag_head = $1;  # "(": gt, "[": ge
+			my $invalue   = $2;
+			my $flag_tail = $3;
+			my $idx;
+			my $sec_start  = `LC_ALL=C date -u --date "$desc{${arg{key}}}->{LINEAR}->[0]" +%s`; $sec_start  =~ s/\n//g;
+			my $sec_target = `LC_ALL=C date -u --date "$invalue"                          +%s`; $sec_target =~ s/\n//g;
 
-			$sec_start =~ s/\n//g;
-
-			if( $arg{value} =~ /^(\[|\()?([^])]*)(\]|\))?$/ )
+			if( $desc{${arg{key}}}->{LINEAR}->[1] =~ /^(\d+)(SEC|MN|HR|DY)$/ )
 			{
-			    my $flag_head = $1;
-			    my $flag_tail = $3;
-			    #my $sec_target = `export LANG=C ; date -u --date "$2" +%s`;
-			    my $sec_target = `LC_ALL=C date -u --date "$2" +%s`;
-			    $sec_target =~ s/\n//g;
-			    my $idx = floor( ( $sec_target - $sec_start ) / $incre + 0.5 ) + 1;
-			    #my $level
-#			    print STDERR "sec_start:  $sec_start\n";
-#			    print STDERR "sec_target: $sec_target\n";
-#			    print STDERR "incre:      $incre\n";
-
-
-			    my $time_idx = &levels( \%desc, "TDEF", $idx );
-			    #my $sec_idx = `export LANG=C ; date -u --date "$time_idx" +%s`;
-			    my $sec_idx = `LC_ALL=C date -u --date "$time_idx" +%s`;
-			    $sec_idx =~ s/\n//g;
-
-
-#			    print STDERR floor(0.5) . ", " . floor(-1.5) . "\n";
-#			    print STDERR &round(0.5) . ", " . &round(-1.5) . "\n";
-
-#			    print STDERR "time_idx: $time_idx\n";
-#			    print STDERR "sec_idx: $sec_idx\n";
-#			    print STDERR "$flag_head\n";
-#			    print STDERR "idx(before): $idx\n";
-#			    if( "$flag_head" eq "(" && ! ( $sec_target gt $sec_idx ) ){ $idx++; }
-#			    if( "$flag_head" eq "[" && ! ( $sec_target ge $sec_idx ) ){ $idx++; }
-#			    if( "$flag_tail" eq ")" && ! ( $sec_target lt $sec_idx ) ){ $idx--; }
-#			    if( "$flag_tail" eq "]" && ! ( $sec_target le $sec_idx ) ){ $idx--; }
-			    if( "$flag_head" eq "(" && ! ( $sec_idx >  $sec_target ) ){ $idx++; }
-			    if( "$flag_head" eq "[" && ! ( $sec_idx >= $sec_target ) ){ $idx++; }
-			    if( "$flag_tail" eq ")" && ! ( $sec_idx <  $sec_target ) ){ $idx--; }
-			    if( "$flag_tail" eq "]" && ! ( $sec_idx <= $sec_target ) ){ $idx--; }
-
-			    print $idx . "\n";
-			    exit;
+			    my $incre = $1 * $FAC_TUNIT{uc($2)};
+			    $idx = floor( ( $sec_target - $sec_start ) / $incre + 0.5 ) + 1;
+			}
+			elsif( $desc{${arg{key}}}->{LINEAR}->[1] =~ /^(\d+)(MO)$/ )
+			{
+			    my $mon_start  = `LC_ALL=C date -u --date "$desc{${arg{key}}}->{LINEAR}->[0]" +%Y%m`; $mon_start  =~ s/\n//g;
+			    $mon_start = substr($mon_start, 0, 4) * 12 + substr($mon_start, 4, 2);
+			    my $mon_target  = `LC_ALL=C date -u --date "$invalue"                         +%Y%m`; $mon_target =~ s/\n//g;
+			    $mon_target = substr($mon_target, 0, 4) * 12 + substr($mon_target, 4, 2);
+			    $idx = $mon_target - $mon_start + 1;
 			}
 			else
 			{
-			    print STDERR "error: value=$arg{value} is inappropriate.\n";
+			    print STDERR "error: $desc{${arg{key}}}->{LINEAR}->[1] is not supported with --key=TDEF and --target INDEX.\n";
 			    exit 1;
 			}
+
+			my $time_idx = &levels( \%desc, "TDEF", $idx );
+			my $sec_idx = `LC_ALL=C date -u --date "$time_idx" +%s`; $sec_idx =~ s/\n//g;
+			if( "$flag_head" eq "(" && ! ( $sec_idx >  $sec_target ) ){ $idx++; }
+			if( "$flag_head" eq "[" && ! ( $sec_idx >= $sec_target ) ){ $idx++; }
+			if( "$flag_tail" eq ")" && ! ( $sec_idx <  $sec_target ) ){ $idx--; }
+			if( "$flag_tail" eq "]" && ! ( $sec_idx <= $sec_target ) ){ $idx--; }
+			
+			print $idx . "\n";
+			exit;
 		    }
+		    else
+		    {
+			print STDERR "error: value=$arg{value} is inappropriate.\n";
+			exit 1;
+		    }
+
 		}
 		elsif( "$arg{key}" eq "EDEF" )
 		{
