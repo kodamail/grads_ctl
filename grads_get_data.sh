@@ -1,8 +1,9 @@
-#!/bin/sh
+#!/bin/bash
 #
 # type ./grads_get_data.sh for usage
 #
 export LANG=C
+export LC_ALL=C
 export PATH=$( cd $( dirname ${BASH_SOURCE:-$0} ); pwd ):${PATH}
 . common.sh || exit 1
 create_temp

@@ -1,10 +1,11 @@
-#!/bin/sh
+#!/bin/bash
 #
 # check existence of files (do not check file size)
 #
 # If succeed, output "ok" and list of filename
 #
 export LANG=C
+export LC_ALL=C
 export PATH=$( cd $( dirname ${BASH_SOURCE:-$0} ); pwd ):${PATH}
 
 

@@ -1,5 +1,7 @@
-#!/bin/sh
-export LANG=en
+#!/bin/bash
+export LANG=C
+export LC_ALL=C
+
 export PATH=$( cd $( dirname ${BASH_SOURCE:-$0} ); pwd ):${PATH}
 . common.sh || exit 1
 create_temp
