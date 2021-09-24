@@ -140,7 +140,6 @@ sub main()
 	{
 	    #my $nc_filename = $desc{DSET};
 	    my $nc_filename = &dset( \%desc, 1 ) . "\n";
-
 	    my $dir = $arg{ctl};
 	    $dir =~ s|[^/]*$||;
 	    $nc_filename =~ s|^\^|$dir|;
@@ -665,6 +664,9 @@ sub dump_ctl_dims
     print $key . "  " 
 	. sprintf( "%6s", $$desc{$key}->{NUM} ) 
 	. "  " . $$desc{$key}->{TYPE};
+
+#    print STDERR "$key: $$desc{$key}->{TYPE}\n";
+
     if( "$$desc{$key}->{TYPE}" eq "LINEAR" )
     {
 	print "  " . sprintf( "%14s", $$desc{$key}->{LINEAR}->[0] )
@@ -850,6 +852,10 @@ sub ana_ctl()
 #	    $tmp[1] = uc( $tmp[1] );
 	    $ref = { "$tmp1" => "", "NUM" => "$tmp[0]", "TYPE" => "$tmp1" };
 	    $$desc{$KEYWORD[$j]} = $ref;
+
+
+#	    print STDERR $tmp1 . "\n";
+#	    exit 1;
 
 	    if( "$tmp1" eq "LEVELS" )
 	    {
@@ -1084,7 +1090,7 @@ sub ana_nc()
 
 	    if( $chk eq ";" )
 	    {
-		#print STDERR "mode2=$mode2 val=$value\n";
+		#print STDERR "mode2=$mode2 val=$val\n";
 		#exit 1;
 		my @tmp = split( /,/, $val);
 
@@ -1092,11 +1098,18 @@ sub ana_nc()
 		{
 
 		    # assume constant time interval
+		    $$desc{TDEF}->{TYPE} = "LINEAR";
+
 		    my $dt = $tmp[1] - $tmp[0];
 		    if( $tdef_units[0] =~ /seconds/i ){ $dt .= "SEC"; }
 		    if( $tdef_units[0] =~ /minutes/i ){ $dt .= "MN"; }
 		    if( $tdef_units[0] =~ /hours/i   ){ $dt .= "HR"; }
 		    if( $tdef_units[0] =~ /days/i    ){ $dt .= "DY"; }
+
+#		    print STDERR "mode2=$mode2 val=$val\n";
+#		    print STDERR "$dt\n";
+#		    print STDERR "$tdef_units[0]\n";
+#		    exit 1;
 
 #		    my $ref = []; $$desc{$key}->{LINEAR} = $ref;
 		    
@@ -1232,6 +1245,7 @@ sub dset()
     my $t    = shift;
     my $ret;
 
+#    if( $$dsec{OPTIONS}->{TEMPLATE} = 1
     if( $$desc{DSET} =~ /%ch/i )
     {
 	$ret = $$desc{DSET};
@@ -1244,7 +1258,7 @@ sub dset()
 	    }
 	}
     }
-    else
+    elsif( $$desc{DSET} =~ /%y4|%m2|%m1|%d2|%d1|%h2|%n2/i )
     {
 	my $gtime = &levels( $desc, "TDEF", $t );
 	#my $date = `export LANG=C ; date -u --date "$gtime" +%Y%m%d\\\ %H:%M:%S`;
@@ -1264,6 +1278,10 @@ sub dset()
 	$ret =~ s/%d1/$d1/ig;
 	$ret =~ s/%h2/$h2/ig;
 	$ret =~ s/%n2/$n2/ig;
+    }
+    else
+    {
+	$ret = $$desc{DSET};
     }
     return $ret;
 }
