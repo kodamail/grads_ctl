@@ -969,6 +969,8 @@ sub ana_nc()
 
     my $mode = "";
     my $mode2 = "";
+    my $id;
+    my $key;
     my $val;
     my $var = "";
     my @tdef_units = ();
@@ -982,7 +984,7 @@ sub ana_nc()
     LINELOOP: for( my $i=0; $i<=$#$nc; $i++ )
     {
 	if( $$nc[$i] =~ /^\s*$/ ){ next LINELOOP; }
-
+	
 	#
 	#----- change mode
 	#
@@ -1000,18 +1002,23 @@ sub ana_nc()
 	{
 	    if( $$nc[$i] =~ /^\s*([a-z]+)\s*=\s([0-9]+)\s*;\s*$/i )
 	    {
-		my $id    = $1;
+		$id  = $1;
 		$val = $2;
-		my $key;
-
 		if(    $id =~ /^lon$/i  ){ $key = "XDEF"; }
 		elsif( $id =~ /^lat$/i  ){ $key = "YDEF"; }
 		elsif( $id =~ /^lev$/i  ){ $key = "ZDEF"; }
 		elsif( $id =~ /^time$/i ){ $key = "TDEF"; }
-		$ref = { "NUM" => "$val", "TYPE" => "LEVELS" };
-		$$desc{$key} = $ref;
-		next LINELOOP;
 	    }
+	    elsif( $$nc[$i] =~ /^\s*time\s*=\s*UNLIMITED\s*;\s*\/\/\s*\(([0-9]+) currently\)$/i )
+	    {
+		$id = "time";
+		$val = $1;
+		$key = "TDEF";
+	    }
+
+	    $ref = { "NUM" => "$val", "TYPE" => "LEVELS" };
+	    $$desc{$key} = $ref;
+	    next LINELOOP;
 	}
 
 	if( $mode eq "variables" )
@@ -1046,8 +1053,7 @@ sub ana_nc()
 		    #my $tdef_init = `export LANG=C ; date -u --date "$tdef_units[2] $tdef_units[3]" +%H:%MZ%d%b%Y`;
 		    my $tdef_init = `LC_ALL=C date -u --date "$tdef_units[2] $tdef_units[3]" +%H:%MZ%d%b%Y`;
 		    $tdef_init =~ s/\n//g;
-		    
-		    $ref = {}; $$desc{TDEF} = $ref;		    
+		    if( ! exists( $$desc{TDEF} ) ){ $ref = {}; $$desc{TDEF} = $ref; }
 		    $ref = []; $$desc{TDEF}->{LINEAR} = $ref;
 		    $$desc{TDEF}->{LINEAR}->[0] = $tdef_init;
 		    #print $$desc{TDEF}->{LINEAR}->[0] . "\n";
