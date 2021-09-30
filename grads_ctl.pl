@@ -44,21 +44,25 @@ sub main()
     ############################################################
     #
     my %arg;
-    $arg{ncdump} = "ncdump";
-    $arg{set}    = [];  # array
+    $arg{ncdump}      = "ncdump";
+    $arg{set}         = [];  # array
+    $arg{add_options} = [];  # array
+    $arg{del_options} = [];  # array
     my $i = 0;
     while( $i <= $#ARGV )
     {
-	if(    "$ARGV[$i]" eq "--ctl"     ){ $i++; $arg{ctl}    =     $ARGV[$i];   }
-	elsif( "$ARGV[$i]" eq "--key"     ){ $i++; $arg{key}    = uc( $ARGV[$i] ); }
-	elsif( "$ARGV[$i]" eq "--nc"      ){ $i++; $arg{nc}     =     $ARGV[$i];   }
-	elsif( "$ARGV[$i]" eq "--ncdump"  ){ $i++; $arg{ncdump} =     $ARGV[$i];   }
-	elsif( "$ARGV[$i]" eq "--set"     ){ $i++; push( @{$arg{set}}, $ARGV[$i] ); }
-	elsif( "$ARGV[$i]" eq "--set-vars-zdef-nums" ){ $i++; $arg{set_vars_zdef_nums} = $ARGV[$i]; }
-	elsif( "$ARGV[$i]" eq "--target"  ){ $i++; $arg{target} = uc( $ARGV[$i] ); }
-	elsif( "$ARGV[$i]" eq "--unit"    ){ $i++; $arg{unit}   = uc( $ARGV[$i] ); }
-	elsif( "$ARGV[$i]" eq "--value"   ){ $i++; $arg{value}  =     $ARGV[$i];   }
-	elsif( "$ARGV[$i]" eq "--var"     ){ $i++; $arg{var}    = uc( $ARGV[$i] ); }
+	if(    "$ARGV[$i]" eq "--ctl"                ){ $i++; $arg{ctl}                 =     $ARGV[$i]    ; }
+	elsif( "$ARGV[$i]" eq "--key"                ){ $i++; $arg{key}                 = uc( $ARGV[$i] )  ; }
+	elsif( "$ARGV[$i]" eq "--nc"                 ){ $i++; $arg{nc}                  =     $ARGV[$i]    ; }
+	elsif( "$ARGV[$i]" eq "--ncdump"             ){ $i++; $arg{ncdump}              =     $ARGV[$i]    ; }
+	elsif( "$ARGV[$i]" eq "--set-vars-zdef-nums" ){ $i++; $arg{set_vars_zdef_nums}  =     $ARGV[$i]    ; }
+	elsif( "$ARGV[$i]" eq "--target"             ){ $i++; $arg{target}              = uc( $ARGV[$i] )  ; }
+	elsif( "$ARGV[$i]" eq "--unit"               ){ $i++; $arg{unit}                = uc( $ARGV[$i] )  ; }
+	elsif( "$ARGV[$i]" eq "--value"              ){ $i++; $arg{value}               =     $ARGV[$i]    ; }
+	elsif( "$ARGV[$i]" eq "--var"                ){ $i++; $arg{var}                 = uc( $ARGV[$i] )  ; }
+	elsif( "$ARGV[$i]" eq "--set"                ){ $i++; push( @{$arg{set}}        ,     $ARGV[$i]   ); }
+	elsif( "$ARGV[$i]" eq "--add-options"        ){ $i++; push( @{$arg{add_options}}, uc( $ARGV[$i] ) ); }
+	elsif( "$ARGV[$i]" eq "--del-options"        ){ $i++; push( @{$arg{del_options}}, uc( $ARGV[$i] ) ); }
 	#
 	elsif( $ARGV[$i] =~ /\.ctl$/ && $arg{ctl}    eq "" ){ $arg{ctl}    =     $ARGV[$i];   }
 	elsif( $ARGV[$i] =~ /\.nc$/  && $arg{nc}     eq "" ){ $arg{nc}     =     $ARGV[$i];   }
@@ -167,6 +171,7 @@ sub main()
 	# overwrite by --set values (analyze again)
 	&ana_ctl( \@{$arg{set}}, \%desc );
     }
+    
     if( $arg{set_vars_zdef_nums} ne "" )
     {
 	for( my $i=0; $i<$desc{VARS}->{NUM}; $i++ )
@@ -175,6 +180,25 @@ sub main()
 	    $desc{VARS}->{VAR}->{$var}->{ZNUM} = $arg{set_vars_zdef_nums};
 	}
     }
+    
+    for( my $i=0; $i<=$#{$arg{add_options}}; $i++ )
+    {
+	if( ! defined( $desc{OPTIONS} ) ){ my $ref = {} ; $desc{OPTIONS} = $ref; }
+	$desc{OPTIONS}->{$arg{add_options}->[$i]} = 1;
+    }
+
+    for( my $i=0; $i<=$#{$arg{del_options}}; $i++ )
+    {
+	#if( ! defined( $desc{OPTIONS} ) ){ my $ref = {} ; $desc{OPTIONS} = $ref; }
+	delete( $desc{OPTIONS}->{$arg{del_options}->[$i]} ) if defined( $desc{OPTIONS}->{$arg{del_options}->[$i]} );
+    }
+
+#    print $desc{OPTIONS} . "\n";
+#    exit;
+
+#    if( keys $desc{OPTIONS} )
+
+
     #
     ############################################################
     #
@@ -601,12 +625,15 @@ sub dump_ctl()
     #
     elsif( "$key" eq "OPTIONS" )
     {
-	print $key;
-	while ( my ( $key2, $val ) = each %{$$desc{OPTIONS}} )
+	if( keys %{$$desc{OPTIONS}} > 0 )
 	{
-	    if( $val == 1 ){ print "  " . $key2; }
+	    print $key;
+	    while ( my ( $key2, $val ) = each %{$$desc{OPTIONS}} )
+	    {
+		if( $val == 1 ){ print "  " . $key2; }
+	    }
+	    print "\n";
 	}
-	print "\n";
 	return 0;
     }
     #
@@ -1366,6 +1393,8 @@ Options:
   --set-vars-zdef-num num
     Forced to set number of levels for all the variables in VARS.
 
+  --add-options
+    Add OPTIONS.
 
   Below keywords are not supported now:
     keyword = "DTYPE", "INDEX", "STNMAP", "UNPACK", "FILEHEADER", "XYHEADER", "THEADER", "HEADERBYTES", "TRAILERBYTES", "XVAR", "YVAR", "ZVAR", "STID", "TVAR", "TOFFVAR", "PDEF", "VECTORPAIRS"
