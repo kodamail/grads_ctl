@@ -15,7 +15,8 @@ TMAX=""
 YMD_MIN=""  # in YYYYMMDD -> YYYYMMDD 00:00:00
 YMD_MAX=""  # in YYYYMMDD -> YYYYMMDD 00:00:00
 VERBOSE=0
-LIST=0
+#LIST=0
+LIST=1
 
 if [[ "$1" = "" ]] ; then
     cat <<EOF
