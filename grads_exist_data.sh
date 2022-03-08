@@ -26,7 +26,7 @@ usage:
      -t tmin[:tmax]
      [ -ymd ymdmin:ymdmax ]
      [ -ymd ("["|"(")ymdmin:ymdmax(")"|"]") ]
-     [-list]
+     [-list|-nolist]
 EOF
     exit
 fi
@@ -48,6 +48,9 @@ while [[ "$1" != "" ]] ; do
 
     elif [[ "$1" = "-list" ]] ; then
         LIST=1
+
+    elif [[ "$1" = "-nolist" ]] ; then
+        LIST=0
 
     elif [[ "${CTL}" = "" ]] ; then
         CTL=$1
@@ -103,7 +106,8 @@ DSET_LIST=( $( grads_ctl.pl ${CTL} DSET "${TMIN}:${TMAX}" ) ) || exit 1
 FILE_LIST=()
 for DSET in ${DSET_LIST[@]} ; do
     FILE=$( echo "${DSET}" | sed -e "s|^^|${CTL%/*}/|" ) || exit 1
-    FILE_LIST[${#FILE_LIST[@]}]=${FILE}
+    #FILE_LIST[${#FILE_LIST[@]}]=${FILE}
+    FILE_LIST+=( ${FILE} )
 
     if [[ ! -f ${FILE} ]] ; then
 	STATUS="fail_file_exist ${FILE}"
