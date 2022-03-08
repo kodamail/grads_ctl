@@ -2,7 +2,7 @@
 #
 # check existence of files (do not check file size)
 #
-# If succeed, output "ok" and list of filename
+# If succeed, output "ok" and list of filenames by default.
 #
 export LANG=C
 export LC_ALL=C
@@ -26,7 +26,7 @@ usage:
      -t tmin[:tmax]
      [ -ymd ymdmin:ymdmax ]
      [ -ymd ("["|"(")ymdmin:ymdmax(")"|"]") ]
-     [-list|-nolist]
+     [ -list | -nolist | -listonly ]
 EOF
     exit
 fi
@@ -51,6 +51,9 @@ while [[ "$1" != "" ]] ; do
 
     elif [[ "$1" = "-nolist" ]] ; then
         LIST=0
+
+    elif [[ "$1" = "-listonly" ]] ; then
+        LIST=-1
 
     elif [[ "${CTL}" = "" ]] ; then
         CTL=$1
@@ -116,8 +119,11 @@ for DSET in ${DSET_LIST[@]} ; do
 done
 
 # display
-echo ${STATUS}
-if (( ${LIST} == 1 )) ; then
+if (( ${LIST} != -1 )) ; then
+    echo ${STATUS}
+fi
+
+if (( ${LIST} != 0 )) ; then
     for FILE in ${FILE_LIST[@]} ; do
     echo ${FILE}
     done
